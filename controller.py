@@ -10,7 +10,7 @@ import threading
 
 import keyboard
 from utils import keyboardMarker
-from empaticaE4LSL import run_E4streaming, stop_E4streaming
+from parts.gsr import run_E4streaming, stop_E4streaming
 
 deviceID = 'CD36CD'     # E4 wristband device id.   ex) 'A02088'
 

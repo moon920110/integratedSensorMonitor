@@ -3,17 +3,17 @@ import struct
 import numpy as np
 import matplotlib.pyplot as plt
 import threading
+import pandas as pd
 
 
-class ISMSocket:
+class EEG:
     """
-    Integrated sensor monitoring tool TCP/IP socket
+    EEG connection
     """
-    def __init__(self, host, port, logging=None):
-        self.logging = logging
-
+    def __init__(self, host, port):
         self.host = host
         self.port = port
+
         self.done = False
         self.data_log = b''
         self.latest_packets = []
@@ -22,14 +22,20 @@ class ISMSocket:
         self.signal_log = np.zeros((1, 20))
         self.time_log = np.zeros((1, 20))
         self.montage = []
+        self.columns = []
         self.fsample = 0
         self.fmains = 0
 
+        self.sock = None
+
+        self.stream_data = None
+        self.idx = 0
+        self.standard_time = 0
+        self._recording = False
+
+    def connect(self):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.connect((self.host, self.port))
-
-    def stream_signal(self, parser_func):
-        pass
 
     def parse_data(self):
         # parse_data() receives DSI-Streamer TCP/IP packets and updates the signal_log and time_log attributes
@@ -60,13 +66,18 @@ class ISMSocket:
                         self.latest_packet_data_timestamp = np.reshape(
                             struct.unpack('>f', self.latest_packets[index][12:16]), (1, 1))
 
-                        print("Timestamps: " + str(self.latest_packet_data_timestamp))
-                        print("Signal Data: " + str(self.latest_packet_data))
-
+                        # print("Timestamps: " + str(self.latest_packet_data_timestamp))
+                        # print("Signal Data: " + str(self.latest_packet_data))
+                        if self._recording:
+                            # TODO: 시간 초기화 해야함, index도 다 0으로 뜸
+                            data_for_save = np.concatenate((self.latest_packet_data_timestamp, self.latest_packet_data),
+                                                           axis=0)
+                            self.stream_data = pd.concat([self.stream_data,
+                                      pd.DataFrame(data_for_save.reshape(1, -1), columns=self.columns)])
                         self.signal_log = np.append(self.signal_log, self.latest_packet_data, 1)
                         self.time_log = np.append(self.time_log, self.latest_packet_data_timestamp, 1)
-                        self.signal_log = self.signal_log[:, -100:]
-                        self.time_log = self.time_log[:, -100:]
+                        self.signal_log = self.signal_log[:, -1000:]
+                        self.time_log = self.time_log[:, -1000:]
                     ## Non-data packet handling
                     if packet_header[0] == 5:
                         (event_code, event_node) = struct.unpack('>II', self.latest_packets[index][12:20])
@@ -87,14 +98,36 @@ class ISMSocket:
             self.latest_packets = []
             self.latest_packet_headers = []
 
-    def example_plot(self):
+    def record(self):
+        self.standard_time = self.time_log[0, -1]
+        self.columns = ['time'] + self.montage
+        print(self.columns)
+        self.stream_data = pd.DataFrame(columns=self.columns)
+        self._recording = True
+
+    def pause(self):
+        pass
+
+    def stop_record(self):
+        self._recording = False
+
+    def save_data(self, filename):  # only csv for now
+        if self._recording:
+            self._recording = False
+        if self.stream_data is not None:
+            self.stream_data.to_csv(filename)
+            print('EEG data is saved as {}'.format(filename))
+
+    def example_plot(self):  # -> change to update
 
         # example_plot() uses the threading python library and matplotlib to plot the eeg data in realtime.
         # the plots are unlabeled but users can refer to the tcp/ip socket protocol documentation to understand how to discern the different plots given their indices.
         # ideally, each eeg plot should have its own subplot but for demonstrative purposes, they are all plotted on the same figure.
         data_thread = threading.Thread(target=self.parse_data)
         data_thread.start()
-
+        import time
+        time.sleep(1)
+        eeg_test.record()
         refresh_rate = 0.03
         duration = 60  # the default plot duration is 60 seconds.
         runtime = 0
@@ -125,5 +158,6 @@ class ISMSocket:
 
 
 if __name__ == "__main__":
-    eeg_test = ISMSocket('localhost', 8844)
+    eeg_test = EEG('localhost', 8844)
+    eeg_test.connect()
     eeg_test.example_plot()
