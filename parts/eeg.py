@@ -37,8 +37,8 @@ class EEG:
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.connect((self.host, self.port))
 
-    def parse_data(self):
-        # parse_data() receives DSI-Streamer TCP/IP packets and updates the signal_log and time_log attributes
+    def stream(self):
+        # stream() receives DSI-Streamer TCP/IP packets and updates the signal_log and time_log attributes
         # which capture EEG data and time data, respectively, from the last 100 EEG data packets (by default) into a numpy array.
         while not self.done:
             data = self.sock.recv(921600)
@@ -69,11 +69,13 @@ class EEG:
                         # print("Timestamps: " + str(self.latest_packet_data_timestamp))
                         # print("Signal Data: " + str(self.latest_packet_data))
                         if self._recording:
-                            # TODO: 시간 초기화 해야함, index도 다 0으로 뜸
-                            data_for_save = np.concatenate((self.latest_packet_data_timestamp, self.latest_packet_data),
-                                                           axis=0)
+                            if self.idx == 0:
+                                self.standard_time = self.latest_packet_data_timestamp.squeeze()
+                            record_time = self.latest_packet_data_timestamp.squeeze() - self.standard_time
+                            data_for_save = np.concatenate(([[record_time]], self.latest_packet_data), axis=0)
                             self.stream_data = pd.concat([self.stream_data,
                                       pd.DataFrame(data_for_save.reshape(1, -1), columns=self.columns)])
+                            self.idx += 1
                         self.signal_log = np.append(self.signal_log, self.latest_packet_data, 1)
                         self.time_log = np.append(self.time_log, self.latest_packet_data_timestamp, 1)
                         self.signal_log = self.signal_log[:, -1000:]
@@ -99,17 +101,19 @@ class EEG:
             self.latest_packet_headers = []
 
     def record(self):
-        self.standard_time = self.time_log[0, -1]
         self.columns = ['time'] + self.montage
-        print(self.columns)
         self.stream_data = pd.DataFrame(columns=self.columns)
         self._recording = True
+
+    def stop_record(self):
+        self._recording = False
+        self.idx = 0
 
     def pause(self):
         pass
 
-    def stop_record(self):
-        self._recording = False
+    def resume(self):
+        pass
 
     def save_data(self, filename):  # only csv for now
         if self._recording:
@@ -118,12 +122,15 @@ class EEG:
             self.stream_data.to_csv(filename)
             print('EEG data is saved as {}'.format(filename))
 
+    def fft(self):
+        pass
+
     def example_plot(self):  # -> change to update
 
         # example_plot() uses the threading python library and matplotlib to plot the eeg data in realtime.
         # the plots are unlabeled but users can refer to the tcp/ip socket protocol documentation to understand how to discern the different plots given their indices.
         # ideally, each eeg plot should have its own subplot but for demonstrative purposes, they are all plotted on the same figure.
-        data_thread = threading.Thread(target=self.parse_data)
+        data_thread = threading.Thread(target=self.stream)
         data_thread.start()
         import time
         time.sleep(1)
@@ -139,6 +146,7 @@ class EEG:
             self.time_log = self.time_log[:, -1000:]
             plt.clf()
             try:
+                print(self.time_log, self.signal_log)
                 plt.plot(self.time_log.t, self.signal_log.t)
             except:
                 pass

@@ -36,7 +36,10 @@ class GSR:
         self.deviceid = deviceid
         self.s = None
 
-        self.stream_data = {}
+        self.columns = ['time', 'acc', 'bvp', 'gsr', 'tmp', 'ibi', 'tag']
+        self.stream_data = None
+        self._recording = False
+        self.idx = 0
 
     def connect(self):
         self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -165,7 +168,7 @@ class GSR:
         self.samples_ibi.append(content)
         self.samples_temp.append(content)
 
-    def stream(self):  # -> change to update
+    def stream(self):
 
         try:
             print("Streaming...")
@@ -252,6 +255,11 @@ class GSR:
             self.s.send("device_disconnect\r\n".encode())
             self.s.close()
 
+    def record(self):
+        # TODO: pandas data format, column titles
+        self.stream_data = pd.DataFrame(columns=self.columns)
+        self._recording = True
+
     def stop_E4streaming(self, p_folder):
         self.mark_e4('o')
         self.stream_on = False
@@ -264,7 +272,7 @@ class GSR:
     def run_E4streaming(self):
         self.connect()
         time.sleep(1)
-        self.suscribe_to_data()
+        self.subscribe_to_data()
         self.prepare_LSL_streaming()
         time.sleep(1)
         self.stream()

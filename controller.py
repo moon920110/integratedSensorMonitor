@@ -10,7 +10,7 @@ import threading
 
 import keyboard
 from utils import keyboardMarker
-from parts.gsr import run_E4streaming, stop_E4streaming
+from parts.gsr import GSR
 
 deviceID = 'CD36CD'     # E4 wristband device id.   ex) 'A02088'
 
@@ -22,7 +22,8 @@ if not os.path.exists(p_folder):
 
 
 # Start E4 streaming
-e4_thread = threading.Thread(target=run_E4streaming, args=(deviceID,))
+gsr = GSR('CD36CD')
+e4_thread = threading.Thread(target=gsr.run_E4streaming)
 e4_thread.setDaemon(True)
 e4_thread.start()
 
@@ -37,5 +38,5 @@ while True:
         keyboardMarker('O')
 
         # Stop E4 streaming
-        stop_E4streaming(p_folder)
+        gsr.stop_E4streaming(p_folder)
         break
