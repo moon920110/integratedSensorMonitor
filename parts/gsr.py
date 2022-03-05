@@ -37,6 +37,7 @@ class GSR:
         self.s = None
 
         self.columns = ['time', 'acc', 'bvp', 'gsr', 'tmp', 'ibi', 'tag']
+        self.standard_time = 0
         self.stream_data = None
         self._recording = False
         self.idx = 0
@@ -208,32 +209,32 @@ class GSR:
                                     int(samples[i].split()[4].replace(',', '.'))]
                             # outletACC.push_sample(data, timestamp=timestamp)
                             self.samples_acc.append(str(timestamp) + ',' + str(data))
-                            # print(timestamp, data)
+                            print('ACC', timestamp, data)
                         if stream_type == "E4_Bvp":
                             timestamp = float(samples[i].split()[1].replace(',', '.'))
                             data = float(samples[i].split()[2].replace(',', '.'))
                             # outletBVP.push_sample([data], timestamp=timestamp)
                             self.samples_bvp.append(str(timestamp) + ',' + str(data))
-                            # print(timestamp, data)
+                            print('BVP', timestamp, data)
                         if stream_type == "E4_Gsr":
                             timestamp = float(samples[i].split()[1].replace(',', '.'))
                             data = float(samples[i].split()[2].replace(',', '.'))
                             # outletGSR.push_sample([data], timestamp=timestamp)
                             self.samples_gsr.append(str(timestamp) + ',' + str(data))
-                            # print(timestamp, data)
+                            print('GSR', timestamp, data)
                         if stream_type == "E4_Temperature":
                             timestamp = float(samples[i].split()[1].replace(',', '.'))
                             data = float(samples[i].split()[2].replace(',', '.'))
                             # outletTemp.push_sample([data], timestamp=timestamp)
                             self.samples_temp.append(str(timestamp) + ',' + str(data))
-                            # print(timestamp, data)
+                            print('Temp', timestamp, data)
                         if stream_type == "E4_Ibi":
                             # 안됨
                             timestamp = float(samples[i].split()[1].replace(',', '.'))
                             data = float(samples[i].split()[2].replace(',', '.'))
                             # outletIBI.push_sample([data], timestamp=timestamp)
                             self.samples_ibi.append(str(timestamp) + ',' + str(data))
-                            # print(timestamp, data)
+                            print('IBI', timestamp, data)
                         if stream_type == "E4_Tag":
                             timestamp = float(samples[i].split()[1].replace(',', '.'))
                             data = float(samples[i].split()[2].replace(',', '.'))
