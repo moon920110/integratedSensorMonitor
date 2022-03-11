@@ -1,5 +1,6 @@
-import tobii_research as tr
+import libs.tobii.tobii_research as tr
 import time
+import base64
 from datetime import datetime
 from tkinter import Tk, PhotoImage
 
@@ -21,26 +22,26 @@ class Tobii():
     def gaze_data_callback(self, gaze_data):
         # Print gaze points of left and right eye
 #         self.gaze_data = gaze_data
-        self.gaze_time = datetime.now()
-        self.gaze_left = gaze_data['left_gaze_point_on_display_area']
-        self.gaze_right = gaze_data['right_gaze_point_on_display_area']
+        gaze_time = datetime.now()
+        gaze_left = gaze_data['left_gaze_point_on_display_area']
+        gaze_right = gaze_data['right_gaze_point_on_display_area']
         
         print("Date: ({date_time}) \t Left eye: ({gaze_left_eye}) \t Right eye: ({gaze_right_eye})".format(
-            date_time = self.gaze_time,
-            gaze_left_eye = self.gaze_left,
-            gaze_right_eye = self.gaze_right))
+            date_time=gaze_time,
+            gaze_left_eye=gaze_left,
+            gaze_right_eye=gaze_right))
         
-        self.gaze_data[len(self.gaze_data)] = {'time':self.gaze_time, 'left':self.gaze_left, 
-                                               'right':self.gaze_right}
+        self.gaze_data[len(self.gaze_data)] = {'time': gaze_time, 'left': gaze_left,
+                                               'right': gaze_right}
         time.sleep(5)
         
     def subscribe(self,):
         self.my_eyetracker.subscribe_to(tr.EYETRACKER_GAZE_DATA, self.gaze_data_callback, as_dictionary=True)
     
-    def unsubscribe(self,):
+    def unsubscribe(self):
         self.my_eyetracker.unsubscribe_from(tr.EYETRACKER_GAZE_DATA, self.gaze_data_callback)
     
-    def calibration(self,):
+    def calibration(self):
         if self.my_eyetracker is None:
             return
 
@@ -75,26 +76,25 @@ class Tobii():
             calibration.leave_calibration_mode()
             print("Left calibration mode.")
             
-            
-    ## eye_images 따로 나오진 않음
-    def eye_image_callback(self, ey_image_data):
+    # eye_images 따로 나오진 않음
+    def eye_image_callback(self, eye_image_data):
         print("System time: {0}, Device time {1}, Camera id {2}".format(eye_image_data['system_time_stamp'],
                                                                          eye_image_data['device_time_stamp'],
                                                                          eye_image_data['camera_id']))
         image = PhotoImage(data=base64.standard_b64encode(eye_image_data['image_data']))
         print("{0} width {1}, height {2}".format(image, image.width(), image.height()))
 
-    def eye_image(self,):
+    def eye_image(self):
         root = Tk()
         print("Subscribing to eye images for eye tracker with serial number {0}.".format(self.serial_number))
-        eyetracker.subscribe_to(tr.EYETRACKER_EYE_IMAGES, eye_image_callback, as_dictionary=True)
+        self.my_eyetracker.subscribe_to(tr.EYETRACKER_EYE_IMAGES, self.eye_image_callback, as_dictionary=True)
 
         time.sleep(5)
-        eyetracker.unsubscribe_from(tr.EYETRACKER_EYE_IMAGES, eye_image_callback)
+        self.my_eyetracker.unsubscribe_from(tr.EYETRACKER_EYE_IMAGES, self.eye_image_callback)
         print("Unsubscribed from eye images.")
         root.destroy()
         
-    def display_area(self,):
+    def display_area(self):
         display_area = self.my_eyetracker.get_display_area()
 
         print("Got display area from tracker with serial number {0}:".format(self.serial_number))
