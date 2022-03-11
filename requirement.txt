@@ -1,5 +1,5 @@
 pyaudio==0.2.11
 numpy==1.22.2
 python-opencv==4.5.5
-ffmpeg
+ffmpeg-python
 mss
