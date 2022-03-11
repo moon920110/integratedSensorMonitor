@@ -9,7 +9,7 @@ import os
 import threading
 
 import keyboard
-from utils import keyboardMarker
+from common.gsr_utils import keyboardMarker
 from parts.gsr import GSR
 
 deviceID = 'CD36CD'     # E4 wristband device id.   ex) 'A02088'

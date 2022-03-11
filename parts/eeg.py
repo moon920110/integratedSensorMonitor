@@ -178,5 +178,5 @@ class EEG:
 
 if __name__ == "__main__":
     eeg_test = EEG('localhost', 8844)
-    eeg_test.connect()
+    eeg_test.ready()
     eeg_test.example_plot()

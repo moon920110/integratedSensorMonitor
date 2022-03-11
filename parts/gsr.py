@@ -36,8 +36,6 @@ class GSR:
         self.deviceid = deviceid
         self.s = None
 
-        self.columns = ['time', 'acc', 'bvp', 'gsr', 'tmp', 'ibi', 'tag']
-        self.stream_data = None
         self._recording = False
         self.start_checker = 0
         self.standard_time = 0
@@ -106,27 +104,27 @@ class GSR:
         print("Starting LSL streaming")
 
         if self.acc:
-            infoACC = pylsl.StreamInfo('acc', 'ACC', 3, 32, 'int32', 'ACC-empatica_e4');
+            infoACC = pylsl.StreamInfo('acc', 'ACC', 3, 32, 'int32', 'ACC-empatica_e4')
             global outletACC
             outletACC = pylsl.StreamOutlet(infoACC)
         if self.bvp:
-            infoBVP = pylsl.StreamInfo('bvp', 'BVP', 1, 64, 'float32', 'BVP-empatica_e4');
+            infoBVP = pylsl.StreamInfo('bvp', 'BVP', 1, 64, 'float32', 'BVP-empatica_e4')
             global outletBVP
             outletBVP = pylsl.StreamOutlet(infoBVP)
         if self.gsr:
-            infoGSR = pylsl.StreamInfo('gsr', 'GSR', 1, 4, 'float32', 'GSR-empatica_e4');
+            infoGSR = pylsl.StreamInfo('gsr', 'GSR', 1, 4, 'float32', 'GSR-empatica_e4')
             global outletGSR
             outletGSR = pylsl.StreamOutlet(infoGSR)
         if self.tmp:
-            infoTemp = pylsl.StreamInfo('tmp', 'Temp', 1, 4, 'float32', 'Temp-empatica_e4');
+            infoTemp = pylsl.StreamInfo('tmp', 'Temp', 1, 4, 'float32', 'Temp-empatica_e4')
             global outletTemp
             outletTemp = pylsl.StreamOutlet(infoTemp)
         if self.ibi:
-            infoIBI = pylsl.StreamInfo('hr', 'HR', 1, 1, 'float32', 'IBI-empatica_e4');
+            infoIBI = pylsl.StreamInfo('hr', 'HR', 1, 1, 'float32', 'IBI-empatica_e4')
             global outletIBI
             outletTemp = pylsl.StreamOutlet(infoIBI)
         if self.tag:
-            infoTag = pylsl.StreamInfo('tag', 'Tag', 1, channel_format='float32', source_id='Tag-empatica_e4');
+            infoTag = pylsl.StreamInfo('tag', 'Tag', 1, channel_format='float32', source_id='Tag-empatica_e4')
             global outletTag
             outletTag = pylsl.StreamOutlet(infoTag)
             print('ok')
