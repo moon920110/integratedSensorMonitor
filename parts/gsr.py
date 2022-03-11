@@ -37,10 +37,10 @@ class GSR:
         self.s = None
 
         self.columns = ['time', 'acc', 'bvp', 'gsr', 'tmp', 'ibi', 'tag']
-        self.standard_time = 0
         self.stream_data = None
         self._recording = False
-        self.idx = 0
+        self.start_checker = 0
+        self.standard_time = 0
 
     def connect(self):
         self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -138,6 +138,8 @@ class GSR:
         self.stream()
 
     def save_data(self, folder):
+        if self._recording:
+            self.stop_record()
 
         with open(os.path.join(folder, "acc.csv"), 'w') as f:
             for sample in self.samples_acc:
@@ -208,44 +210,68 @@ class GSR:
                                     int(samples[i].split()[3].replace(',', '.')),
                                     int(samples[i].split()[4].replace(',', '.'))]
                             # outletACC.push_sample(data, timestamp=timestamp)
-                            self.samples_acc.append(str(timestamp) + ',' + str(data))
-                            print('ACC', timestamp, data)
+                            if self._recording:
+                                if self.start_checker == 0:
+                                    self.standard_time = timestamp
+                                    self.start_checker = 1
+                                self.samples_acc.append(str(timestamp - self.standard_time) + ',' + str(data))
+                            # print('ACC', timestamp, data)
                         if stream_type == "E4_Bvp":
                             timestamp = float(samples[i].split()[1].replace(',', '.'))
                             data = float(samples[i].split()[2].replace(',', '.'))
                             # outletBVP.push_sample([data], timestamp=timestamp)
-                            self.samples_bvp.append(str(timestamp) + ',' + str(data))
-                            print('BVP', timestamp, data)
+                            if self._recording:
+                                if self.start_checker == 0:
+                                    self.standard_time = timestamp
+                                    self.start_checker = 1
+                                self.samples_bvp.append(str(timestamp - self.standard_time) + ',' + str(data))
+                            # print('BVP', timestamp, data)
                         if stream_type == "E4_Gsr":
                             timestamp = float(samples[i].split()[1].replace(',', '.'))
                             data = float(samples[i].split()[2].replace(',', '.'))
                             # outletGSR.push_sample([data], timestamp=timestamp)
-                            self.samples_gsr.append(str(timestamp) + ',' + str(data))
-                            print('GSR', timestamp, data)
+                            if self._recording:
+                                if self.start_checker == 0:
+                                    self.standard_time = timestamp
+                                    self.start_checker = 1
+                                self.samples_gsr.append(str(timestamp - self.standard_time) + ',' + str(data))
+                            # print('GSR', timestamp, data)
                         if stream_type == "E4_Temperature":
                             timestamp = float(samples[i].split()[1].replace(',', '.'))
                             data = float(samples[i].split()[2].replace(',', '.'))
                             # outletTemp.push_sample([data], timestamp=timestamp)
-                            self.samples_temp.append(str(timestamp) + ',' + str(data))
-                            print('Temp', timestamp, data)
+                            if self._recording:
+                                if self.start_checker == 0:
+                                    self.standard_time = timestamp
+                                    self.start_checker = 1
+                                self.samples_temp.append(str(timestamp - self.standard_time) + ',' + str(data))
+                            # print('Temp', timestamp, data)
                         if stream_type == "E4_Ibi":
                             # 안됨
                             timestamp = float(samples[i].split()[1].replace(',', '.'))
                             data = float(samples[i].split()[2].replace(',', '.'))
                             # outletIBI.push_sample([data], timestamp=timestamp)
-                            self.samples_ibi.append(str(timestamp) + ',' + str(data))
-                            print('IBI', timestamp, data)
+                            if self._recording:
+                                if self.start_checker == 0:
+                                    self.standard_time = timestamp
+                                    self.start_checker = 1
+                                self.samples_ibi.append(str(timestamp - self.standard_time) + ',' + str(data))
+                            # print('IBI', timestamp, data)
                         if stream_type == "E4_Tag":
                             timestamp = float(samples[i].split()[1].replace(',', '.'))
                             data = float(samples[i].split()[2].replace(',', '.'))
                             # outletTag.push_sample([data], timestamp=timestamp)
-                            self.samples_tag.append(str(timestamp) + ',' + '[TAG]')
-                            self.samples_acc.append(str(timestamp) + ',' + '[TAG]')
-                            self.samples_bvp.append(str(timestamp) + ',' + '[TAG]')
-                            self.samples_gsr.append(str(timestamp) + ',' + '[TAG]')
-                            self.samples_ibi.append(str(timestamp) + ',' + '[TAG]')
-                            self.samples_temp.append(str(timestamp) + ',' + '[TAG]')
-                            print("[MARK TAG] : ", timestamp, data)
+                            if self._recording:
+                                if self.start_checker == 0:
+                                    self.standard_time = timestamp
+                                    self.start_checker = 1
+                                self.samples_tag.append(str(timestamp - self.standard_time) + ',' + '[TAG]')
+                                self.samples_acc.append(str(timestamp - self.standard_time) + ',' + '[TAG]')
+                                self.samples_bvp.append(str(timestamp - self.standard_time) + ',' + '[TAG]')
+                                self.samples_gsr.append(str(timestamp - self.standard_time) + ',' + '[TAG]')
+                                self.samples_ibi.append(str(timestamp - self.standard_time) + ',' + '[TAG]')
+                                self.samples_temp.append(str(timestamp - self.standard_time) + ',' + '[TAG]')
+                            # print("[MARK TAG] : ", timestamp, data)
                     # time.sleep(1)
                 except socket.timeout:
                     print("Socket timeout")
@@ -261,19 +287,25 @@ class GSR:
         self.stream_data = pd.DataFrame(columns=self.columns)
         self._recording = True
 
-    def stop_E4streaming(self, p_folder):
+    def stop_record(self):
+        self._recording = False
+        self.start_checker = 0
+
+    def terminate(self, p_folder):
         self.mark_e4('o')
         self.stream_on = False
         time.sleep(1)
         print("Disconnecting from device")
         self.s.send("device_disconnect\r\n".encode())
         self.s.close()
-        self.save_data(p_folder)
+        print("GSR is terminated")
+        # self.save_data(p_folder)
 
-    def run_E4streaming(self):
+    def ready(self):
         self.connect()
         time.sleep(1)
         self.subscribe_to_data()
         self.prepare_LSL_streaming()
         time.sleep(1)
-        self.stream()
+        print("GSR is ready")
+        # self.stream()

@@ -4,13 +4,15 @@ import numpy as np
 import matplotlib.pyplot as plt
 import threading
 import pandas as pd
+import time
+import os
 
 
 class EEG:
     """
     EEG connection
     """
-    def __init__(self, host, port):
+    def __init__(self, host='localhost', port=8844):
         self.host = host
         self.port = port
 
@@ -29,7 +31,7 @@ class EEG:
         self.sock = None
 
         self.stream_data = None
-        self.idx = 0
+        self.start_checker = 0
         self.standard_time = 0
         self._recording = False
 
@@ -69,17 +71,18 @@ class EEG:
                         # print("Timestamps: " + str(self.latest_packet_data_timestamp))
                         # print("Signal Data: " + str(self.latest_packet_data))
                         if self._recording:
-                            if self.idx == 0:
+                            if self.start_checker == 0:
                                 self.standard_time = self.latest_packet_data_timestamp.squeeze()
+                                self.start_checker = 1
                             record_time = self.latest_packet_data_timestamp.squeeze() - self.standard_time
                             data_for_save = np.concatenate(([[record_time]], self.latest_packet_data), axis=0)
                             self.stream_data = pd.concat([self.stream_data,
                                       pd.DataFrame(data_for_save.reshape(1, -1), columns=self.columns)])
-                            self.idx += 1
                         self.signal_log = np.append(self.signal_log, self.latest_packet_data, 1)
                         self.time_log = np.append(self.time_log, self.latest_packet_data_timestamp, 1)
                         self.signal_log = self.signal_log[:, -1000:]
                         self.time_log = self.time_log[:, -1000:]
+
                     ## Non-data packet handling
                     if packet_header[0] == 5:
                         (event_code, event_node) = struct.unpack('>II', self.latest_packets[index][12:20])
@@ -107,7 +110,7 @@ class EEG:
 
     def stop_record(self):
         self._recording = False
-        self.idx = 0
+        self.start_checker = 0
 
     def pause(self):
         pass
@@ -115,15 +118,27 @@ class EEG:
     def resume(self):
         pass
 
-    def save_data(self, filename):  # only csv for now
+    def save_data(self, file_path):  # only csv for now
+        save_path = os.path.join(file_path, 'eeg.csv')
         if self._recording:
-            self._recording = False
+            self.stop_record()
         if self.stream_data is not None:
-            self.stream_data.to_csv(filename)
-            print('EEG data is saved as {}'.format(filename))
+            self.stream_data.to_csv(save_path)
+            print('EEG data is saved as {}'.format(save_path))
 
     def fft(self):
         pass
+
+    def ready(self):
+        self.connect()
+        time.sleep(1)
+        print("EEG is ready")
+
+    def terminate(self):
+        self.stop_record()
+        time.sleep(1)
+        self.sock.close()
+        print("EEG is terminated")
 
     def example_plot(self):  # -> change to update
 
@@ -132,7 +147,6 @@ class EEG:
         # ideally, each eeg plot should have its own subplot but for demonstrative purposes, they are all plotted on the same figure.
         data_thread = threading.Thread(target=self.stream)
         data_thread.start()
-        import time
         time.sleep(1)
         eeg_test.record()
         refresh_rate = 0.03
@@ -160,9 +174,6 @@ class EEG:
 
         self.done = True
         data_thread.join()
-
-    def close(self):
-        self.sock.close()
 
 
 if __name__ == "__main__":

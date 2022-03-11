@@ -7,9 +7,9 @@ from parts.screen import ScreenRecorder
 from parts.camera import WebcamRecorder
 
 webcam_re = WebcamRecorder()
-screen_re = ScreenRecorder()
+screen_re = ScreenRecorder(1, left=0, top=0, width=1920, height=1080)
 
-screen_re.select_screen_to_record(1, left=0, top=0, width=1920, height=1080)
+screen_re.ready()
 
 webcam_re.record()
 screen_re.record()

@@ -71,6 +71,7 @@ class VideoRecorder:
         
         self.start_time = None
         self.end_time = None
+        self.start_frame_num = 0
 
         self.init_connection(camera_index)
 
@@ -112,7 +113,7 @@ class VideoRecorder:
     def clear(self):
         self.video_frames = []
 
-    def __record(self):
+    def stream(self):
         while self._recording:
             ret, self.current_frame = self.vid_capture.read()
             if ret:
@@ -123,11 +124,11 @@ class VideoRecorder:
                 break
     
     def record(self):
-        self._recording=True
+        self._recording = True
         if self.start_time is None:
             self.start_time = time.time()
-        video_thread = threading.Thread(target=self.__record)
-        video_thread.start()
+        # video_thread = threading.Thread(target=self.__record)
+        # video_thread.start()
 
     def stop(self):
         if self._recording:
@@ -135,7 +136,7 @@ class VideoRecorder:
             self.end_time = time.time()
             # self.vid_capture.release()
     
-    def save(self,start_frame=0, end_frame=-1, file_name='temp', file_path='./'):
+    def save(self, start_frame=0, end_frame=-1, file_name='temp', file_path='./'):
         current_time = datetime.now().strftime("%Y/%m/%d, %H:%M:%S")\
             .replace('/', '')\
             .replace(',', '_')\

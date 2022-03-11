@@ -20,11 +20,22 @@ import ffmpeg
 
 
 # TODO: Add caption for each attribute
-# TODO: refactoring
+# TODO: VideoRecorder랑 AudioRecorder 스크린/카메라 통합시키고 ready/stream/recording refactoring.
+# TODO: 특히 stream에서 video, audio thread로 돌아가야하는데 Recorder 자체가 thread로 돌아가서 nested threading 되는지 확인할 것
 class ScreenRecorder:
-    def __init__(self):
+    def __init__(self, monitor_num, left, top, width, height):
         self._video_recorder = VideoRecorder()
         self._audio_recorder = AudioRecorder()
+
+        self.monitor_num = monitor_num
+        self.left = left
+        self.top = top
+        self.width = width
+        self.height = height
+
+    def stream(self):
+        self._audio_recorder.stream()
+        self._video_recorder.stream()
 
     def record(self):
         self._audio_recorder.record()
@@ -44,10 +55,14 @@ class ScreenRecorder:
     def get_current_audio_value(self):
         return self._audio_recorder.get_current_audio_value()
 
-    def select_screen_to_record(self, monitor_number=0, **kwargs):
-        self._video_recorder.select_screen_to_record(monitor_number, **kwargs)
+    def ready(self):
+        self._video_recorder.select_screen_to_record(self.monitor_num,
+                                                     left=self.left,
+                                                     top=self.top,
+                                                     width=self.width,
+                                                     height=self.height)
 
-    def save(self,start_frame=0, end_frame=-1, video_offset=0, audio_offset=0, file_name='None', file_path='./'):
+    def save(self, start_frame=0, end_frame=-1, video_offset=0, audio_offset=0, file_name='None', file_path='./'):
         vid_file = self._video_recorder.save(start_frame + video_offset, end_frame)
         aud_file = self._audio_recorder.save(start_frame + audio_offset, end_frame)
 
@@ -74,7 +89,7 @@ class ScreenRecorder:
         #     print('Fail to delete temp files')
 
 
-class VideoRecorder():
+class VideoRecorder:
     def __init__(self):
         self._recording = True
 
@@ -89,6 +104,7 @@ class VideoRecorder():
         self.monitors = self.sct.monitors
 
         self.video_frames = []
+        self.start_frame_num = 0
 
         self.select_screen_to_record()
         self.check_detected_monitors()
@@ -106,10 +122,10 @@ class VideoRecorder():
             self.monitor = self.monitors[monitor_number]
         else:
             self.monitor = self.monitors[monitor_number]
-            for key in ['left','top']:
+            for key in ['left', 'top']:
                 self.monitor[key] = self.monitor[key] + kwargs[key]
 
-            for key in ['width','height']:
+            for key in ['width', 'height']:
                 self.monitor[key] = kwargs[key]
 
     def get_current_video_value(self):
@@ -139,8 +155,9 @@ class VideoRecorder():
         self._recording = True
         if self.start_time is None:
             self.start_time = time.time()
-        video_thread = threading.Thread(target=self.__record)
-        video_thread.start()
+        self.start_frame_num = len(self.video_frames)
+        # video_thread = threading.Thread(target=self.__record)
+        # video_thread.start()
 
     def stop(self):
         if self._recording:
@@ -194,6 +211,7 @@ class AudioRecorder():
         self.format = pyaudio.paInt16
 
         self.audio = pyaudio.PyAudio()
+        self.start_frame_num = 0
 
         dev_index = 0
         for i in range(self.audio.get_device_count()):
@@ -204,7 +222,7 @@ class AudioRecorder():
                 print('dev_index', dev_index)
                 break
 
-        self.stream = self.audio.open(format=self.format,
+        self.audio_stream = self.audio.open(format=self.format,
                                       channels=self.channels,
                                       rate=self.rate,
                                       input=True,
@@ -215,9 +233,9 @@ class AudioRecorder():
 
     # Audio starts being recorded
     def __record(self):
-        self.stream.start_stream()
+        self.audio_stream.start_stream()
         while self._recording:
-            data = self.stream.read(self.frames_per_buffer)
+            data = self.audio_stream.read(self.frames_per_buffer)
             if not self._mute:
                 self.audio_frames.append(data)
             else:
@@ -242,17 +260,19 @@ class AudioRecorder():
     def stop(self):
         if self._recording:
             self._recording = False
-            self.stream.stop_stream()
+            self.audio_stream.stop_stream()
             # self.stream.close()
             # self.audio.terminate()
 
     # Launches the audio recording function using a thread
     def record(self):
         self._recording = True
-        audio_thread = threading.Thread(target=self.__record)
-        audio_thread.start()
+        self.start_frame_num = len(self.audio_frames)
 
-    def save(self,start_frame=0, end_frame=-1, file_name='temp', file_path='./'):
+        # audio_thread = threading.Thread(target=self.__record)
+        # audio_thread.start()
+
+    def save(self, start_frame=0, end_frame=-1, file_name='temp', file_path='./'):
         current_time = datetime.now().strftime("%Y/%m/%d, %H:%M:%S")\
             .replace('/', '')\
             .replace(',', '_')\
@@ -266,7 +286,7 @@ class AudioRecorder():
         wave_file.setnchannels(self.channels)
         wave_file.setsampwidth(self.audio.get_sample_size(self.format))
         wave_file.setframerate(self.rate)
-        wave_file.writeframes(b''.join(self.audio_frames[start_frame:end_frame]))
+        wave_file.writeframes(b''.join(self.audio_frames[self.start_frame_num:end_frame]))
         wave_file.close()
 
         return file_path + file_name
