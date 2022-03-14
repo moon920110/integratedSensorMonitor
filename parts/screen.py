@@ -8,6 +8,7 @@ from datetime import datetime
 import threading
 
 from const.const import *
+from common.video_audio_util import AudioRecorder
 
 # ffmpeg프로그램을 따로 설치해줘야 함
 # IMPORTANT: windows는 https://www.wikihow.com/Install-FFmpeg-on-Windows 따라 ffmpeg프로그램 설치
@@ -20,12 +21,12 @@ import ffmpeg
 
 
 # TODO: Add caption for each attribute
-# TODO: VideoRecorder랑 AudioRecorder 스크린/카메라 통합시키고 ready/stream/recording refactoring.
+# TODO: ready/stream/recording refactoring.
 # TODO: 특히 stream에서 video, audio thread로 돌아가야하는데 Recorder 자체가 thread로 돌아가서 nested threading 되는지 확인할 것
 class ScreenRecorder:
     def __init__(self, monitor_num, left, top, width, height):
-        self._video_recorder = VideoRecorder()
-        self._audio_recorder = AudioRecorder()
+        self._video_recorder = VideoRecorderForScreen()
+        self._audio_recorder = AudioRecorder(device_name=['믹스', 'Stereo Mix'])
 
         self.monitor_num = monitor_num
         self.left = left
@@ -89,18 +90,17 @@ class ScreenRecorder:
         #     print('Fail to delete temp files')
 
 
-class VideoRecorder:
+class VideoRecorderForScreen:
     def __init__(self):
         self._recording = True
 
         self.monitor = None
         self.current_frame = None
 
-        self.sct = mss()
-
         self.start_time = None
         self.end_time = None
-
+        
+        self.sct = mss()
         self.monitors = self.sct.monitors
 
         self.video_frames = []
@@ -193,100 +193,3 @@ class VideoRecorder:
 
         vid_recorder.release()
         return file_path+file_name
-
-
-class AudioRecorder():
-    # Audio class based on pyAudio and Wave
-    def __init__(self, dev_index=0):
-        self.MIN = 200000  # sum of abs(MUTE) 211783
-        self.MAX = 8000000  # 7889292
-
-        self._recording = True
-        self._mute = False
-        self.current_frame = None
-
-        self.rate = 44100
-        self.frames_per_buffer = 1024
-        self.channels = 1
-        self.format = pyaudio.paInt16
-
-        self.audio = pyaudio.PyAudio()
-        self.start_frame_num = 0
-
-        dev_index = 0
-        for i in range(self.audio.get_device_count()):
-            dev = self.audio.get_device_info_by_index(i)
-            # print(dev['name'], dev['hostApi'])
-            if ( ( '믹스' in dev['name'] or 'Stereo Mix' in dev['name']) and dev['hostApi'] == 0):
-                dev_index = dev['index']
-                print('dev_index', dev_index)
-                break
-
-        self.audio_stream = self.audio.open(format=self.format,
-                                      channels=self.channels,
-                                      rate=self.rate,
-                                      input=True,
-                                      input_device_index=dev_index,
-                                      frames_per_buffer=self.frames_per_buffer)
-
-        self.audio_frames = []
-
-    # Audio starts being recorded
-    def __record(self):
-        self.audio_stream.start_stream()
-        while self._recording:
-            data = self.audio_stream.read(self.frames_per_buffer)
-            if not self._mute:
-                self.audio_frames.append(data)
-            else:
-                self.audio_frames.append(bytes(MUTE))
-
-    def mute(self):
-        self._mute = True
-
-    def undo_mute(self):
-        self._mute = False
-
-    def clear(self):
-        self.audio_frames = []
-
-    def get_current_audio_value(self):
-        data = np.frombuffer(self.current_frame, dtype=np.int16)
-        data = np.abs(data).sum()
-        data = (data-self.MIN)/(self.MAX-self.MIN)
-        return data
-
-    # Finishes the audio recording therefore the thread too    
-    def stop(self):
-        if self._recording:
-            self._recording = False
-            self.audio_stream.stop_stream()
-            # self.stream.close()
-            # self.audio.terminate()
-
-    # Launches the audio recording function using a thread
-    def record(self):
-        self._recording = True
-        self.start_frame_num = len(self.audio_frames)
-
-        # audio_thread = threading.Thread(target=self.__record)
-        # audio_thread.start()
-
-    def save(self, start_frame=0, end_frame=-1, file_name='temp', file_path='./'):
-        current_time = datetime.now().strftime("%Y/%m/%d, %H:%M:%S")\
-            .replace('/', '')\
-            .replace(',', '_')\
-            .replace(' ', '')\
-            .replace(':', '')
-        file_name = current_time + file_name
-        if not('.wav' in file_name):
-            file_name = file_name+'.wav'
-
-        wave_file = wave.open(file_path+file_name, 'wb')
-        wave_file.setnchannels(self.channels)
-        wave_file.setsampwidth(self.audio.get_sample_size(self.format))
-        wave_file.setframerate(self.rate)
-        wave_file.writeframes(b''.join(self.audio_frames[self.start_frame_num:end_frame]))
-        wave_file.close()
-
-        return file_path + file_name
