@@ -1,9 +1,9 @@
-import cv2
 import numpy as np
 import pyaudio
 import wave
-import threading
+
 from datetime import datetime
+import threading
 
 from const.const import *
 # IMPORTANT: windows는 https://www.wikihow.com/Install-FFmpeg-on-Windows따라 ffmpeg프로그램 설치
@@ -11,13 +11,14 @@ from const.const import *
 
 class AudioRecorder():
     # Audio class based on pyAudio and Wave
-    def __init__(self, dev_index=0, device_name=['마이크','USB']):
+    def __init__(self, device_name):
         self.MIN = 200000 # sum of abs(MUTE) 211783
         self.MAX = 8000000 # 7889292
 
         self._recording = True
         self._mute = False
         self.current_frame = None
+        self.device_name = device_name
         
         self.rate = 44100
         self.frames_per_buffer = 1024
@@ -26,6 +27,21 @@ class AudioRecorder():
         
         self.audio = pyaudio.PyAudio()
 
+        self.stream = None
+        self.audio_frames = []
+        self.flag = 0
+        self.cnt = 0
+
+    def connect(self):
+        dev_index = self.find_device_index(self.device_name)
+        self.stream = self.audio.open(format=self.format,
+                                      channels=self.channels,
+                                      rate=self.rate,
+                                      input=True,
+                                      input_device_index = dev_index,
+                                      frames_per_buffer = self.frames_per_buffer)
+
+    def find_device_index(self, device_name):
         dev_index = 0
         for i in range(self.audio.get_device_count()):
             dev = self.audio.get_device_info_by_index(i)
@@ -35,16 +51,15 @@ class AudioRecorder():
                 print('dev_index', dev_index)
                 break
 
-        self.stream = self.audio.open(format=self.format,
-                                      channels=self.channels,
-                                      rate=self.rate,
-                                      input=True,
-                                      input_device_index = dev_index,
-                                      frames_per_buffer = self.frames_per_buffer)
-        self.audio_frames = []
+        return dev_index
     
+    def count(self):
+        self.flag = self.cnt
+        self.cnt = 0
+
     def is_it_mic_or_stero_mix(self, device_name, dev):
         flag = False
+        # print(dev['name'])
         if '마이크' in device_name[0]:
             if (( device_name[0] in dev['name'] and device_name[1] in dev['name']) and dev['hostApi'] == 0):
                 flag = True
@@ -52,17 +67,6 @@ class AudioRecorder():
             if (( device_name[0] in dev['name'] or device_name[1] in dev['name']) and dev['hostApi'] == 0):
                 flag = True
         return flag
-
-
-    # Audio starts being recorded
-    def __record(self):
-        self.stream.start_stream()
-        while self._recording:
-            data = self.stream.read(self.frames_per_buffer)
-            if not self._mute:
-                self.audio_frames.append(data)
-            else:
-                self.audio_frames.append(bytes(MUTE))
 
     def mute(self):
         self._mute = True
@@ -92,6 +96,16 @@ class AudioRecorder():
         self._recording = True
         audio_thread = threading.Thread(target=self.__record)
         audio_thread.start()
+    
+    def __record(self):
+        self.stream.start_stream()
+        while self._recording:
+            data = self.stream.read(self.frames_per_buffer)
+            if not self._mute:
+                self.audio_frames.append(data)
+            else:
+                self.audio_frames.append(bytes(MUTE))
+            self.cnt = self.cnt + 1        
     
     def save(self,start_frame=0, end_frame=-1, file_name='temp', file_path='./'):
         current_time = datetime.now().strftime("%Y/%m/%d, %H:%M:%S")\

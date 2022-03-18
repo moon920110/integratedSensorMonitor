@@ -1,8 +1,11 @@
+# VScode issue
+import sys
+sys.path.append(".")
+
+import os
 import cv2
 import numpy as np
 from mss import mss
-import pyaudio
-import wave
 import time
 from datetime import datetime
 import threading
@@ -19,9 +22,6 @@ import ffmpeg
 # IMPORTANT: windows는 https://m.blog.naver.com/PostView.naver?isHttpsRedirect=true&blogId=yun__dodo&logNo=221470090523 따라 설치
 # IMPORTANT: ubuntu는 WIP
 
-
-# TODO: Add caption for each attribute
-# TODO: ready/stream/recording refactoring.
 # TODO: 특히 stream에서 video, audio thread로 돌아가야하는데 Recorder 자체가 thread로 돌아가서 nested threading 되는지 확인할 것
 class ScreenRecorder:
     def __init__(self, monitor_num, left, top, width, height):
@@ -35,14 +35,14 @@ class ScreenRecorder:
         self.height = height
 
     def stream(self):
-        self._audio_recorder.stream()
-        self._video_recorder.stream()
-
-    def record(self):
         self._audio_recorder.record()
         self._video_recorder.record()
+    
+    def record(self):
+        self._audio_recorder.count()
+        self._video_recorder.count()
 
-    def stop(self):
+    def stop_record(self):
         self._audio_recorder.stop()
         self._video_recorder.stop()
 
@@ -57,15 +57,20 @@ class ScreenRecorder:
         return self._audio_recorder.get_current_audio_value()
 
     def ready(self):
-        self._video_recorder.select_screen_to_record(self.monitor_num,
-                                                     left=self.left,
-                                                     top=self.top,
-                                                     width=self.width,
-                                                     height=self.height)
+        self._audio_recorder.connect()
+        self._video_recorder.connect(self.monitor_num,
+                                        left=self.left,
+                                        top=self.top,
+                                        width=self.width,
+                                        height=self.height)
+        time.sleep(0.1)
 
-    def save(self, start_frame=0, end_frame=-1, video_offset=0, audio_offset=0, file_name='None', file_path='./'):
-        vid_file = self._video_recorder.save(start_frame + video_offset, end_frame)
-        aud_file = self._audio_recorder.save(start_frame + audio_offset, end_frame)
+    def save_data(self, file_path='./', video_offset=0, audio_offset=0, file_name='screen'):
+        self.stop_record()
+        if not '/' in file_path[-1]:
+            file_path = file_path+'/'
+        vid_file = self._video_recorder.save(video_offset, file_name='screen_vid_tmp', file_path=file_path)
+        aud_file = self._audio_recorder.save(audio_offset, file_name='screen_aud_tmp', file_path=file_path)
 
         current_time = datetime.now().strftime("%Y/%m/%d, %H:%M:%S")\
             .replace('/', '')\
@@ -76,18 +81,18 @@ class ScreenRecorder:
         if not('.mp4' in file_name):
             file_name = file_name+'.mp4'
 
-        # video_stream = ffmpeg.input(vid_file)
-        # audio_stream = ffmpeg.input(aud_file)
-        # stream = ffmpeg.output(audio_stream, video_stream, file_name).run()
-        #
-        # try:
-        #     if os.path.exists(aud_file):
-        #         os.remove(aud_file)
-        #
-        #     if os.path.exists(vid_file):
-        #         os.remove(vid_file)
-        # except:
-        #     print('Fail to delete temp files')
+        video_stream = ffmpeg.input(vid_file)
+        audio_stream = ffmpeg.input(aud_file)
+        stream = ffmpeg.output(audio_stream, video_stream, file_name).run()
+        
+        try:
+            if os.path.exists(aud_file):
+                os.remove(aud_file)
+        
+            if os.path.exists(vid_file):
+                os.remove(vid_file)
+        except:
+            print('Fail to delete temp files')
 
 
 class VideoRecorderForScreen:
@@ -104,10 +109,12 @@ class VideoRecorderForScreen:
         self.monitors = self.sct.monitors
 
         self.video_frames = []
-        self.start_frame_num = 0
-
-        self.select_screen_to_record()
+        self.cnt = 0
+        self.flag = 0
+    
+    def connect(self,monitor_number=0, **kwargs):
         self.check_detected_monitors()
+        self.select_screen_to_record(monitor_number=monitor_number, **kwargs)
 
     def check_detected_monitors(self):
         print("Number of detected monitors:", len(self.monitors)-1)
@@ -139,11 +146,16 @@ class VideoRecorderForScreen:
 
     def clear(self):
         self.video_frames = []
+    
+    def count(self):
+        self.flag = self.cnt
+        self.cnt = 0
 
     def __record(self):
         while self._recording:
             self.current_frame = np.array(self.sct.grab(self.monitor))[:, :, :3]
             self.video_frames.append(self.current_frame)
+            self.cnt = self.cnt+1
 
             # if self.current_frame != None:
             #     self.vid_recorder.write(self.current_frame)
@@ -155,9 +167,10 @@ class VideoRecorderForScreen:
         self._recording = True
         if self.start_time is None:
             self.start_time = time.time()
+
         self.start_frame_num = len(self.video_frames)
-        # video_thread = threading.Thread(target=self.__record)
-        # video_thread.start()
+        video_thread = threading.Thread(target=self.__record)
+        video_thread.start()
 
     def stop(self):
         if self._recording:
@@ -165,7 +178,10 @@ class VideoRecorderForScreen:
             self.end_time = time.time()
             # self.vid_capture.release()
 
-    def save(self, start_frame=0, end_frame=-1, file_name='temp', file_path='./'):
+    def save(self, start_frame=0, file_name='temp', file_path='./'):
+        start_frame = start_frame + self.flag
+        end_frame = -1
+        # end_frame = self.flag + self.cnt
         current_time = datetime.now().strftime("%Y/%m/%d, %H:%M:%S")\
             .replace('/', '')\
             .replace(',', '_')\
