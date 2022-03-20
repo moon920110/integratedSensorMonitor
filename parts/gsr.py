@@ -26,11 +26,23 @@ class GSR:
         # deviceID = 'CD36CD'  # 'A02088'
 
         self.samples_acc = []
+        self.acc_start = None
+        self.acc_end = None
         self.samples_bvp = []
+        self.bvp_start = None
+        self.bvp_end = None
         self.samples_gsr = []
+        self.gsr_start = None
+        self.gsr_end = None
         self.samples_temp = []
+        self.temp_start = None
+        self.temp_end = None
         self.samples_ibi = []
+        self.ibi_start = None
+        self.ibi_end = None
         self.samples_tag = []
+        self.tag_start = None
+        self.tag_end = None
 
         self.stream_on = True
         self.deviceid = deviceid
@@ -140,25 +152,29 @@ class GSR:
             self.stop_record()
 
         with open(os.path.join(folder, "acc.csv"), 'w') as f:
-            for sample in self.samples_acc:
+            samples_acc = self.samples_acc[self.acc_start:self.acc_end]
+            for sample in samples_acc:
                 f.write(sample + '\n')
         with open(os.path.join(folder, "bvp.csv"), 'w') as f:
-            for sample in self.samples_bvp:
+            samples_bvp = self.samples_bvp[self.bvp_start:self.bvp_end]
+            for sample in samples_bvp:
                 f.write(sample + '\n')
         with open(os.path.join(folder, "gsr.csv"), 'w') as f:
-            for sample in self.samples_gsr:
+            samples_gsr = self.samples_gsr[self.gsr_start:self.gsr_end]
+            for sample in samples_gsr:
                 f.write(sample + '\n')
         with open(os.path.join(folder, "temp.csv"), 'w') as f:
-            for sample in self.samples_temp:
+            samples_temp = self.samples_temp[self.temp_start:self.temp_end]
+            for sample in samples_temp:
                 f.write(sample + '\n')
         with open(os.path.join(folder, "ibi.csv"), 'w') as f:
-            for sample in self.samples_ibi:
+            samples_ibi = self.samples_ibi[self.ibi_start:self.ibi_end]
+            for sample in samples_ibi:
                 f.write(sample + '\n')
         with open(os.path.join(folder, "tags.csv"), 'w') as f:
-            for sample in self.samples_tag:
+            samples_tag = self.samples_tag[self.tag_start:self.tag_end]
+            for sample in samples_tag:
                 f.write(sample + '\n')
-
-        print("Saved datastream")
 
     def mark_e4(self, key):
         content = str(time.time()) + ", [Alt] + %s" % key
@@ -212,7 +228,7 @@ class GSR:
                                 if self.start_checker == 0:
                                     self.standard_time = timestamp
                                     self.start_checker = 1
-                                self.samples_acc.append(str(timestamp - self.standard_time) + ',' + str(data))
+                            self.samples_acc.append(str(timestamp - self.standard_time) + ',' + str(data))
                             # print('ACC', timestamp, data)
                         if stream_type == "E4_Bvp":
                             timestamp = float(samples[i].split()[1].replace(',', '.'))
@@ -222,7 +238,7 @@ class GSR:
                                 if self.start_checker == 0:
                                     self.standard_time = timestamp
                                     self.start_checker = 1
-                                self.samples_bvp.append(str(timestamp - self.standard_time) + ',' + str(data))
+                            self.samples_bvp.append(str(timestamp - self.standard_time) + ',' + str(data))
                             # print('BVP', timestamp, data)
                         if stream_type == "E4_Gsr":
                             timestamp = float(samples[i].split()[1].replace(',', '.'))
@@ -232,7 +248,7 @@ class GSR:
                                 if self.start_checker == 0:
                                     self.standard_time = timestamp
                                     self.start_checker = 1
-                                self.samples_gsr.append(str(timestamp - self.standard_time) + ',' + str(data))
+                            self.samples_gsr.append(str(timestamp - self.standard_time) + ',' + str(data))
                             # print('GSR', timestamp, data)
                         if stream_type == "E4_Temperature":
                             timestamp = float(samples[i].split()[1].replace(',', '.'))
@@ -242,7 +258,7 @@ class GSR:
                                 if self.start_checker == 0:
                                     self.standard_time = timestamp
                                     self.start_checker = 1
-                                self.samples_temp.append(str(timestamp - self.standard_time) + ',' + str(data))
+                            self.samples_temp.append(str(timestamp - self.standard_time) + ',' + str(data))
                             # print('Temp', timestamp, data)
                         if stream_type == "E4_Ibi":
                             # 안됨
@@ -253,7 +269,7 @@ class GSR:
                                 if self.start_checker == 0:
                                     self.standard_time = timestamp
                                     self.start_checker = 1
-                                self.samples_ibi.append(str(timestamp - self.standard_time) + ',' + str(data))
+                            self.samples_ibi.append(str(timestamp - self.standard_time) + ',' + str(data))
                             # print('IBI', timestamp, data)
                         if stream_type == "E4_Tag":
                             timestamp = float(samples[i].split()[1].replace(',', '.'))
@@ -263,12 +279,12 @@ class GSR:
                                 if self.start_checker == 0:
                                     self.standard_time = timestamp
                                     self.start_checker = 1
-                                self.samples_tag.append(str(timestamp - self.standard_time) + ',' + '[TAG]')
-                                self.samples_acc.append(str(timestamp - self.standard_time) + ',' + '[TAG]')
-                                self.samples_bvp.append(str(timestamp - self.standard_time) + ',' + '[TAG]')
-                                self.samples_gsr.append(str(timestamp - self.standard_time) + ',' + '[TAG]')
-                                self.samples_ibi.append(str(timestamp - self.standard_time) + ',' + '[TAG]')
-                                self.samples_temp.append(str(timestamp - self.standard_time) + ',' + '[TAG]')
+                            self.samples_tag.append(str(timestamp - self.standard_time) + ',' + '[TAG]')
+                            self.samples_acc.append(str(timestamp - self.standard_time) + ',' + '[TAG]')
+                            self.samples_bvp.append(str(timestamp - self.standard_time) + ',' + '[TAG]')
+                            self.samples_gsr.append(str(timestamp - self.standard_time) + ',' + '[TAG]')
+                            self.samples_ibi.append(str(timestamp - self.standard_time) + ',' + '[TAG]')
+                            self.samples_temp.append(str(timestamp - self.standard_time) + ',' + '[TAG]')
                             # print("[MARK TAG] : ", timestamp, data)
                     # time.sleep(1)
                 except socket.timeout:
@@ -282,12 +298,24 @@ class GSR:
 
     def record(self):
         # TODO: pandas data format, column titles
-        self.stream_data = pd.DataFrame(columns=self.columns)
         self._recording = True
+        self.gsr_start = len(self.samples_gsr)
+        self.ibi_start = len(self.samples_ibi)
+        self.temp_start = len(self.samples_temp)
+        self.acc_start = len(self.samples_acc)
+        self.bvp_start = len(self.samples_bvp)
+        self.tag_start = len(self.samples_tag)
 
     def stop_record(self):
-        self._recording = False
-        self.start_checker = 0
+        if self._recording:
+            self._recording = False
+            self.start_checker = 0
+            self.gsr_end = len(self.samples_gsr)
+            self.ibi_end = len(self.samples_ibi)
+            self.temp_end = len(self.samples_temp)
+            self.acc_end = len(self.samples_acc)
+            self.bvp_end = len(self.samples_bvp)
+            self.tag_end = len(self.samples_tag)
 
     def terminate(self, p_folder):
         self.mark_e4('o')
