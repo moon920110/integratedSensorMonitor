@@ -29,6 +29,8 @@ print("parts are added")
 monitor.ready_parts()
 monitor.stream()
 
+time.sleep(3)
+
 print("Start recording")
 monitor.start_record()
 
