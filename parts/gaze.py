@@ -1,4 +1,4 @@
-import libs.tobii.tobii_research as tr
+import tobii_research as tr
 
 import os
 import time
@@ -7,7 +7,8 @@ from datetime import datetime
 from tkinter import Tk, PhotoImage
 import pandas as pd
 
-class Gaze():
+
+class Gaze:
     def __init__(self, ):
         self.found_eyetrackers = tr.find_all_eyetrackers()
         self.my_eyetracker = None

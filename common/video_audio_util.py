@@ -1,6 +1,7 @@
 import numpy as np
 import pyaudio
 import wave
+import os
 
 from datetime import datetime
 import threading
@@ -9,11 +10,12 @@ from const.const import *
 # IMPORTANT: windows는 https://www.wikihow.com/Install-FFmpeg-on-Windows따라 ffmpeg프로그램 설치
 # IMPORTANT: ubuntu 는 apt-get install ffmpeg
 
-class AudioRecorder():
+
+class AudioRecorder:
     # Audio class based on pyAudio and Wave
     def __init__(self, device_name):
-        self.MIN = 200000 # sum of abs(MUTE) 211783
-        self.MAX = 8000000 # 7889292
+        self.MIN = 200000  # sum of abs(MUTE) 211783
+        self.MAX = 8000000  # 7889292
 
         self._recording = True
         self._mute = False
@@ -29,8 +31,8 @@ class AudioRecorder():
 
         self.stream = None
         self.audio_frames = []
-        self.flag = 0
-        self.cnt = 0
+        self.start_frame = None
+        self.end_frame = None
 
     def connect(self):
         dev_index = self.find_device_index(self.device_name)
@@ -53,9 +55,8 @@ class AudioRecorder():
 
         return dev_index
     
-    def count(self):
-        self.flag = self.cnt
-        self.cnt = 0
+    def record(self):
+        self.start_frame = len(self.audio_frames)
 
     def is_it_mic_or_stero_mix(self, device_name, dev):
         flag = False
@@ -88,16 +89,17 @@ class AudioRecorder():
         if self._recording:
             self._recording = False
             self.stream.stop_stream()
+            self.end_frame = len(self.audio_frames)
             # self.stream.close()
             # self.audio.terminate()
 
     # Launches the audio recording function using a thread
-    def record(self):
+    def stream_audio(self):
         self._recording = True
-        audio_thread = threading.Thread(target=self.__record)
+        audio_thread = threading.Thread(target=self.__stream)
         audio_thread.start()
     
-    def __record(self):
+    def __stream(self):
         self.stream.start_stream()
         while self._recording:
             data = self.stream.read(self.frames_per_buffer)
@@ -105,9 +107,9 @@ class AudioRecorder():
                 self.audio_frames.append(data)
             else:
                 self.audio_frames.append(bytes(MUTE))
-            self.cnt = self.cnt + 1        
-    
-    def save(self,start_frame=0, end_frame=-1, file_name='temp', file_path='./'):
+
+    def save(self, file_path='./'):
+        file_name = self.device_name[0] + '_audio_temp'
         current_time = datetime.now().strftime("%Y/%m/%d, %H:%M:%S")\
             .replace('/', '')\
             .replace(',', '_')\
@@ -117,11 +119,11 @@ class AudioRecorder():
         if not('.wav' in file_name):
             file_name = file_name+'.wav'
         
-        wave_file = wave.open(file_path+file_name, 'wb')
+        wave_file = wave.open(os.path.join(file_path, file_name), 'wb')
         wave_file.setnchannels(self.channels)
         wave_file.setsampwidth(self.audio.get_sample_size(self.format))
         wave_file.setframerate(self.rate)
-        wave_file.writeframes(b''.join(self.audio_frames[start_frame:end_frame]))
+        wave_file.writeframes(b''.join(self.audio_frames[self.start_frame:self.end_frame]))
         wave_file.close()
 
-        return file_path + file_name
+        return os.path.join(file_path, file_name)
