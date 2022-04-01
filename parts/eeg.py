@@ -75,7 +75,7 @@ class EEG:
                                 self.standard_time = self.latest_packet_data_timestamp.squeeze()
                                 self.start_checker = 1
                             record_time = self.latest_packet_data_timestamp.squeeze() - self.standard_time
-                            data_for_save = np.concatenate(([[record_time]], self.latest_packet_data), axis=0)
+                            data_for_save = np.concatenate(([[time.time()]], [[record_time]], self.latest_packet_data), axis=0)
                             self.stream_data = pd.concat([self.stream_data,
                                       pd.DataFrame(data_for_save.reshape(1, -1), columns=self.columns)])
                         self.signal_log = np.append(self.signal_log, self.latest_packet_data, 1)
@@ -104,7 +104,7 @@ class EEG:
             self.latest_packet_headers = []
 
     def record(self):
-        self.columns = ['time'] + self.montage
+        self.columns = ['time', 'timestamp'] + self.montage
         self.stream_data = pd.DataFrame(columns=self.columns)
         self._recording = True
 
@@ -123,7 +123,7 @@ class EEG:
         if self._recording:
             self.stop_record()
         if self.stream_data is not None:
-            self.stream_data.to_csv(save_path)
+            self.stream_data.to_csv(save_path, index=False)
             print('EEG data is saved as {}'.format(save_path))
 
     def fft(self):
