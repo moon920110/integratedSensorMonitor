@@ -43,3 +43,7 @@ class Monitor:
 
     def resume_recording(self):
         pass
+
+    def terminate(self):
+        for p in self.parts:
+            p['part'].terminate()

@@ -74,6 +74,9 @@ class WebcamRecorder:
         except:
             print('Fail to delete temp files')
 
+    def terminate(self):
+        pass
+
 
 class VideoRecorderForCamera:
     def __init__(self, camera_index=0):

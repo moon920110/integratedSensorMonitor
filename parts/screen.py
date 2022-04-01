@@ -89,6 +89,9 @@ class ScreenRecorder:
         except:
             print('Fail to delete temp files')
 
+    def terminate(self):
+        pass
+
 
 class VideoRecorderForScreen:
     def __init__(self):
