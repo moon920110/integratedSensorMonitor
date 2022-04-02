@@ -282,7 +282,6 @@ class GSR:
             self.s.close()
 
     def record(self):
-        # TODO: pandas data format, column titles
         self._recording = True
         self.gsr_start = len(self.samples_gsr)
         self.ibi_start = len(self.samples_ibi)
@@ -292,15 +291,14 @@ class GSR:
         self.tag_start = len(self.samples_tag)
 
     def stop_record(self):
-        if self._recording:
-            self._recording = False
-            self.start_checker = 0
-            self.gsr_end = len(self.samples_gsr)
-            self.ibi_end = len(self.samples_ibi)
-            self.temp_end = len(self.samples_temp)
-            self.acc_end = len(self.samples_acc)
-            self.bvp_end = len(self.samples_bvp)
-            self.tag_end = len(self.samples_tag)
+        self._recording = False
+        self.start_checker = 0
+        self.gsr_end = len(self.samples_gsr)
+        self.ibi_end = len(self.samples_ibi)
+        self.temp_end = len(self.samples_temp)
+        self.acc_end = len(self.samples_acc)
+        self.bvp_end = len(self.samples_bvp)
+        self.tag_end = len(self.samples_tag)
 
     def terminate(self, p_folder):
         self.mark_e4('o')

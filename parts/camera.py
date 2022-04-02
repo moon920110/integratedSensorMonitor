@@ -18,6 +18,7 @@ class WebcamRecorder:
     def __init__(self, camera_index=0):
         self._video_recorder = VideoRecorderForCamera(camera_index)
         self._audio_recorder = AudioRecorder(device_name=['마이크', 'USB'])
+        self.recording = False
         
     def ready(self):
         self._audio_recorder.connect()
@@ -31,10 +32,12 @@ class WebcamRecorder:
         self._video_recorder.stream_video()
     
     def record(self):
+        self.recording = True
         self._audio_recorder.record()
         self._video_recorder.record()
     
     def stop_record(self):
+        self.recording = False
         self._audio_recorder.stop()
         self._video_recorder.stop()
     
@@ -49,7 +52,8 @@ class WebcamRecorder:
         return self._audio_recorder.get_current_audio_value()
     
     def save_data(self, file_path):
-        self.stop_record()
+        if self.recording:
+            self.stop_record()
         file_name = 'camera'
         vid_file = self._video_recorder.save(file_path)
         aud_file = self._audio_recorder.save(file_path)
