@@ -1,3 +1,4 @@
+import os
 import time
 import threading
 
@@ -35,6 +36,8 @@ class Monitor:
             p['part'].stop_record()
 
     def save_data(self, save_path):
+        if not os.path.exists(save_path):
+            os.mkdir(save_path)
         for p in self.parts:
             p['part'].save_data(save_path)
 
@@ -47,7 +50,9 @@ class Monitor:
     def terminate(self):
         for p in self.parts:
             p['part'].terminate()
+        print('terminate all devices')
 
     def clear(self):
         for p in self.parts:
             p['part'].clear()
+        print('clear memory of all devices')
