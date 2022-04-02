@@ -35,6 +35,9 @@ class EEG:
         self.standard_time = 0
         self._recording = False
 
+    def clear(self):
+        self.stream_data = []
+
     def connect(self):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.connect((self.host, self.port))

@@ -51,6 +51,14 @@ class GSR:
         self.start_checker = 0
         self.standard_time = 0
 
+    def clear(self):
+        self.samples_tag = []
+        self.samples_acc = []
+        self.samples_ibi = []
+        self.samples_gsr = []
+        self.samples_temp = []
+        self.samples_bvp = []
+
     def connect(self):
         self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.s.settimeout(3)

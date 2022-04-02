@@ -47,3 +47,7 @@ class Monitor:
     def terminate(self):
         for p in self.parts:
             p['part'].terminate()
+
+    def clear(self):
+        for p in self.parts:
+            p['part'].clear()
