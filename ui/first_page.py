@@ -100,7 +100,7 @@ class FirstPageWidget(QWidget):
         if reply == QMessageBox.Yes:
             self.gtr.go_to_record_page.emit()
         else:
-            return False
+            pass
 
     def quit_monitor(self):
         self.monitor.terminate()

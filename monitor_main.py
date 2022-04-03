@@ -10,6 +10,7 @@ from PyQt5.QtWidgets import QApplication
 from ui.ui_window import UIWindow
 
 
+# TODO: 각 센서 활성 상태 표시 & camera 저장 시 빨리감기로 저장됨kkj
 def main():
     monitor = Monitor()
     gsr = GSR('CD36CD')
