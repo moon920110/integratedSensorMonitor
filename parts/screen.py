@@ -30,15 +30,19 @@ class ScreenRecorder:
         self.width = width
         self.height = height
 
+        self.recording = False
+
     def stream(self):
         self._audio_recorder.stream_audio()
         self._video_recorder.stream_video()
     
     def record(self):
+        self.recording = True
         self._audio_recorder.record()
         self._video_recorder.record()
 
     def stop_record(self):
+        self.recording = False
         self._audio_recorder.stop()
         self._video_recorder.stop()
 
@@ -62,7 +66,8 @@ class ScreenRecorder:
         time.sleep(0.1)
 
     def save_data(self, file_path='./'):
-        self.stop_record()
+        if self.recording:
+            self.stop_record()
         file_name = 'screen'
         vid_file = self._video_recorder.save(file_path)
         aud_file = self._audio_recorder.save(file_path)
@@ -88,6 +93,9 @@ class ScreenRecorder:
                 os.remove(vid_file)
         except:
             print('Fail to delete temp files')
+
+    def terminate(self):
+        pass
 
 
 class VideoRecorderForScreen:

@@ -1,10 +1,8 @@
-import tobii_research as tr
+from libs.tobii import tobii_research as tr
 
 import os
 import time
-import base64
 from datetime import datetime
-from tkinter import Tk, PhotoImage
 import pandas as pd
 
 
@@ -48,8 +46,9 @@ class Gaze:
             print("Serial number: " + self.my_eyetracker.serial_number)
 
     ## stream
-    def stream(self, ):
-        self.my_eyetracker.subscribe_to(tr.EYETRACKER_GAZE_DATA, self.gaze_data_callback, as_dictionary=True)
+    def stream(self):
+        if not self.my_eyetracker is None:
+            self.my_eyetracker.subscribe_to(tr.EYETRACKER_GAZE_DATA, self.gaze_data_callback, as_dictionary=True)
 
     ## record
     def record(self):
