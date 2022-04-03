@@ -50,6 +50,7 @@ class Monitor:
     def terminate(self):
         for p in self.parts:
             p['part'].terminate()
+            p['thread'].join()
         print('terminate all devices')
 
     def clear(self):

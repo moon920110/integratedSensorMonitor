@@ -1,4 +1,5 @@
 import os
+import time
 from datetime import datetime
 
 from PyQt5.QtWidgets import QWidget, QPushButton, QHBoxLayout, QVBoxLayout, QComboBox, QLabel, QLineEdit, QMessageBox
@@ -150,5 +151,5 @@ class RecordingPageWidget(QWidget):
         return f'{game}_{music}_{self.record_start}'
 
     def set_record_start_time(self):
-        self.record_start = datetime.now()
+        self.record_start = datetime.now().strftime('%y%m%d_%H-%M-%S.%f')
 
