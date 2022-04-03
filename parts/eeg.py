@@ -16,7 +16,6 @@ class EEG:
         self.host = host
         self.port = port
 
-        self.done = False
         self.data_log = b''
         self.latest_packets = []
         self.latest_packet_headers = []
@@ -34,6 +33,7 @@ class EEG:
         self.start_checker = 0
         self.standard_time = 0
         self._recording = False
+        self._terminate = False
 
     def clear(self):
         self.stream_data = []
@@ -45,7 +45,7 @@ class EEG:
     def stream(self):
         # stream() receives DSI-Streamer TCP/IP packets and updates the signal_log and time_log attributes
         # which capture EEG data and time data, respectively, from the last 100 EEG data packets (by default) into a numpy array.
-        while not self.done:
+        while not self._terminate:
             data = self.sock.recv(921600)
             self.data_log += data
             if self.data_log.find(b'@ABCD', 0, len(
@@ -83,8 +83,8 @@ class EEG:
                                       pd.DataFrame(data_for_save.reshape(1, -1), columns=self.columns)])
                         self.signal_log = np.append(self.signal_log, self.latest_packet_data, 1)
                         self.time_log = np.append(self.time_log, self.latest_packet_data_timestamp, 1)
-                        self.signal_log = self.signal_log[:, -1000:]
-                        self.time_log = self.time_log[:, -1000:]
+                        self.signal_log = self.signal_log[:, -100:]
+                        self.time_log = self.time_log[:, -100:]
 
                     ## Non-data packet handling
                     if packet_header[0] == 5:
@@ -122,12 +122,14 @@ class EEG:
         pass
 
     def save_data(self, file_path):  # only csv for now
+        print("Saving EEG")
         save_path = os.path.join(file_path, 'eeg.csv')
         if self._recording:
             self.stop_record()
         if self.stream_data is not None:
             self.stream_data.to_csv(save_path, index=False)
             print('EEG data is saved as {}'.format(save_path))
+        self.clear()
 
     def fft(self):
         pass
@@ -138,6 +140,8 @@ class EEG:
         print("EEG is ready")
 
     def terminate(self):
+        print('terminating EEG')
+        self._terminate = True
         self.stop_record()
         time.sleep(1)
         self.sock.close()
@@ -175,7 +179,7 @@ class EEG:
             runtime += 1
         plt.show()
 
-        self.done = True
+        self._terminate = True
         data_thread.join()
 
 

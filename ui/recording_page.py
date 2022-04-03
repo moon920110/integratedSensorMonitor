@@ -1,8 +1,9 @@
 import os
-from datetime import datetime
+import time
+from datetime import datetime, timedelta
 
-from PyQt5.QtWidgets import QWidget, QPushButton, QHBoxLayout, QVBoxLayout, QComboBox, QLabel, QLineEdit, QMessageBox
-from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import QWidget, QPushButton, QHBoxLayout, QVBoxLayout, QLabel, QMessageBox
+from PyQt5.QtCore import QTimer
 from const.config import *
 
 
@@ -12,6 +13,7 @@ class RecordingPageWidget(QWidget):
         self.partc_label = QLabel('', self)
         self.game_label = QLabel('', self)
         self.music_label = QLabel('', self)
+        self.timer_label = QLabel('', self)
 
         self.cs = cs
         self.btf = btf
@@ -19,6 +21,7 @@ class RecordingPageWidget(QWidget):
         self.monitor = monitor
         self.save_path = None
         self.record_start = None
+        self.record_start_time = None
 
         self.stop_btn = None
         self.save_btn = None
@@ -26,6 +29,11 @@ class RecordingPageWidget(QWidget):
         self.back_btn = None
 
         self.recording = True
+
+        self.timer = QTimer(self)
+        self.timer.setInterval(100)
+        self.timer.timeout.connect(self.timeout)
+        self.sec_counter = 0
 
         self.init_ui()
 
@@ -47,6 +55,12 @@ class RecordingPageWidget(QWidget):
         music_hbox.addWidget(QLabel('Music Genre:', self))
         music_hbox.addWidget(self.music_label)
         music_hbox.addStretch(1)
+
+        timer_hbox = QHBoxLayout()
+        timer_hbox.addStretch(1)
+        timer_hbox.addWidget(QLabel('Recording time:', self))
+        timer_hbox.addWidget(self.timer_label)
+        timer_hbox.addStretch(1)
 
         self.stop_btn = QPushButton('Stop record')
         self.stop_btn.clicked.connect(self.stop_record)
@@ -75,6 +89,7 @@ class RecordingPageWidget(QWidget):
         vbox.addLayout(partc_hobx)
         vbox.addLayout(game_hbox)
         vbox.addLayout(music_hbox)
+        vbox.addLayout(timer_hbox)
         vbox.addStretch(3)
         vbox.addLayout(btn_hbox)
         vbox.addStretch(1)
@@ -118,6 +133,7 @@ class RecordingPageWidget(QWidget):
 
     def stop_record(self):
         print('stop recording')
+        self.timer.stop()
         self.recording = False
         self.monitor.stop_record()
 
@@ -150,5 +166,12 @@ class RecordingPageWidget(QWidget):
         return f'{game}_{music}_{self.record_start}'
 
     def set_record_start_time(self):
-        self.record_start = datetime.now()
+        self.timer.start()
+        self.sec_counter = 0
+        self.record_start_time = time.time()
+        self.record_start = datetime.now().strftime('%y%m%d_%H-%M-%S.%f')
+
+    def timeout(self):
+        self.sec_counter += 100
+        self.timer_label.setText(str(timedelta(milliseconds=self.sec_counter))[:-3])
 

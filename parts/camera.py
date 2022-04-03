@@ -6,7 +6,6 @@ import time
 from datetime import datetime
 import threading
 
-from const.const import *
 from common.video_audio_util import AudioRecorder
 
 # IMPORTANT: windows는 https://www.wikihow.com/Install-FFmpeg-on-Windows따라 ffmpeg프로그램 설치
@@ -26,8 +25,6 @@ class WebcamRecorder:
         time.sleep(0.1)
 
     def stream(self):
-        self._audio_recorder._recording = True
-        self._video_recorder._recording = True
         self._audio_recorder.stream_audio()
         self._video_recorder.stream_video()
     
@@ -52,6 +49,7 @@ class WebcamRecorder:
         return self._audio_recorder.get_current_audio_value()
     
     def save_data(self, file_path):
+        print("Saving camera")
         if self.recording:
             self.stop_record()
         file_name = 'camera'
@@ -67,25 +65,36 @@ class WebcamRecorder:
         video_stream = ffmpeg.input(vid_file)
         audio_stream = ffmpeg.input(aud_file)
 
-        stream_for_debug = ffmpeg.output(audio_stream, video_stream, os.path.join(file_path, file_name)).run()
-        
         try:
-            if os.path.exists(aud_file):
-                os.remove(aud_file)
-        
-            if os.path.exists(vid_file):
-                os.remove(vid_file)
+            stream_for_debug = ffmpeg.output(audio_stream, video_stream, os.path.join(file_path, file_name)).run()
+            try:
+                if os.path.exists(aud_file):
+                    os.remove(aud_file)
+
+                if os.path.exists(vid_file):
+                    os.remove(vid_file)
+            except:
+                print('Fail to delete temp files')
         except:
-            print('Fail to delete temp files')
+            print("Failed to mix video and audio")
+        
+
+        print("Camera is saved")
+        self.clear()
 
     def terminate(self):
-        pass
+        print('terminating camera')
+        self._video_recorder.terminate()
+        self._audio_recorder.terminate()
+        print('camera is terminated')
 
 
 class VideoRecorderForCamera:
     def __init__(self, camera_index=0):
-        self._recording = True
+        self._recording = False
+        self._terminate = False
 
+        self.video_thread = None
         self.vid_capture = None
 
         self.vid_attribute = None
@@ -106,10 +115,12 @@ class VideoRecorderForCamera:
             print('Warning: Please retry with other video sources')
         else:
             self.vid_attribute = {
-                'width' : int(self.vid_capture.get(3)),
-                'height' : int(self.vid_capture.get(4)),
-                'fps' : self.vid_capture.get(5)
+                'width': int(self.vid_capture.get(3)),
+                'height': int(self.vid_capture.get(4)),
+                'fps': self.vid_capture.get(5)
             }
+            self.video_frames = np.empty((1, self.vid_attribute['height'], self.vid_attribute['width'], 3),
+                                         dtype= np.uint8)
     
     def __open_camera(self,camera_index,waiting=5):
         vid_capture = cv2.VideoCapture(camera_index)
@@ -134,30 +145,35 @@ class VideoRecorderForCamera:
         self.video_frames = []
     
     def __stream(self):
-        while self._recording:
-            ret, self.current_frame = self.vid_capture.read()
-            if ret:
-                # self.vid_recorder.write(self.current_frame)
-                self.video_frames.append(self.current_frame)
-            else:
-                print('read done')
-                break
-    
+        while not self._terminate:
+            if self._recording:
+                ret, self.current_frame = self.vid_capture.read()
+                if ret:
+                    self.current_frame = np.expand_dims(self.current_frame, 0).astype(np.uint8)
+                    self.video_frames = np.append(self.video_frames, self.current_frame, axis=0)
+                else:
+                    print('read done')
+                    break
+
     def stream_video(self):
-        self._recording = True
         if self.start_time is None:
             self.start_time = time.time()
-        video_thread = threading.Thread(target=self.__stream)
-        video_thread.start()
+        self.video_thread = threading.Thread(target=self.__stream)
+        self.video_thread.start()
 
     def stop(self):
         if self._recording:
             self._recording = False
             self.end_time = time.time()
             self.end_frame = len(self.video_frames)
-            # self.vid_capture.release()
-    
+
+    def terminate(self):
+        self._terminate = True
+        self.video_thread.join()
+        self.vid_capture.release()
+
     def record(self):
+        self._recording = True
         self.start_frame = len(self.video_frames)
 
     def save(self, file_path='./'):

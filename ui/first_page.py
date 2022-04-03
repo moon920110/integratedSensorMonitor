@@ -37,7 +37,7 @@ class FirstPageWidget(QWidget):
         game_label.setAlignment(Qt.AlignVCenter)
 
         self.game_cb = QComboBox(self)
-        self.game_cb.addItem('Racing')
+        self.game_cb.addItem('Exited')
         self.game_cb.addItem('Horror')
         self.game_cb.addItem('Bored')
         self.game_cb.addItem('Relaxed')
@@ -52,12 +52,12 @@ class FirstPageWidget(QWidget):
         music_label.setAlignment(Qt.AlignVCenter)
 
         self.music_cb = QComboBox(self)
-        self.music_cb.addItem('No BGM')
-        self.music_cb.addItem('Original BGM')
-        self.music_cb.addItem('Exciting BGM')
-        self.music_cb.addItem('Anxious BGM')
-        self.music_cb.addItem('Depressed BGM')
-        self.music_cb.addItem('Relaxed BGM')
+        self.music_cb.addItem('No-BGM')
+        self.music_cb.addItem('Original-BGM')
+        self.music_cb.addItem('Excited-BGM')
+        self.music_cb.addItem('Anxious-BGM')
+        self.music_cb.addItem('Depressed-BGM')
+        self.music_cb.addItem('Relaxed-BGM')
 
         music_hbox = QHBoxLayout()
         music_hbox.addStretch(1)
@@ -100,7 +100,7 @@ class FirstPageWidget(QWidget):
         if reply == QMessageBox.Yes:
             self.gtr.go_to_record_page.emit()
         else:
-            return False
+            pass
 
     def quit_monitor(self):
         self.monitor.terminate()

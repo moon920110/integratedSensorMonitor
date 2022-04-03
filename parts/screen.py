@@ -6,7 +6,6 @@ import time
 from datetime import datetime
 import threading
 
-from const.const import *
 from common.video_audio_util import AudioRecorder
 
 # ffmpeg프로그램을 따로 설치해줘야 함
@@ -66,6 +65,7 @@ class ScreenRecorder:
         time.sleep(0.1)
 
     def save_data(self, file_path='./'):
+        print("Saving screen")
         if self.recording:
             self.stop_record()
         file_name = 'screen'
@@ -83,24 +83,33 @@ class ScreenRecorder:
 
         video_stream = ffmpeg.input(vid_file)
         audio_stream = ffmpeg.input(aud_file)
-        stream = ffmpeg.output(audio_stream, video_stream, os.path.join(file_path, file_name)).run()
-        
         try:
-            if os.path.exists(aud_file):
-                os.remove(aud_file)
-        
-            if os.path.exists(vid_file):
-                os.remove(vid_file)
+            stream = ffmpeg.output(audio_stream, video_stream, os.path.join(file_path, file_name)).run()
+            try:
+                if os.path.exists(aud_file):
+                    os.remove(aud_file)
+
+                if os.path.exists(vid_file):
+                    os.remove(vid_file)
+            except:
+                print('Fail to delete temp files')
         except:
-            print('Fail to delete temp files')
+            print('Failed to mix video and audio')
+
+        print("Screen is saved")
+        self.clear()
 
     def terminate(self):
-        pass
+        print("terminating screen")
+        self._audio_recorder.terminate()
+        self._video_recorder.terminate()
+        print("screen is terminated")
 
 
 class VideoRecorderForScreen:
     def __init__(self):
-        self._recording = True
+        self._recording = False
+        self._terminate = False
 
         self.monitor = None
         self.current_frame = None
@@ -113,6 +122,7 @@ class VideoRecorderForScreen:
         self.sct = mss()
         self.monitors = self.sct.monitors
 
+        self.video_thread = None
         self.video_frames = []
 
     def connect(self,monitor_number=0, **kwargs):
@@ -130,7 +140,9 @@ class VideoRecorderForScreen:
     def select_screen_to_record(self, monitor_number=0, **kwargs):
         if monitor_number == 0:
             self.monitor = self.monitors[monitor_number]
+            self.video_frames = np.empty((1, self.monitor['height'], self.monitor['width'], 3), dtype=np.uint8)
         else:
+            self.video_frames = np.empty((1, kwargs['height'], kwargs['width'], 3), dtype=np.uint8)
             self.monitor = self.monitors[monitor_number]
             for key in ['left', 'top']:
                 self.monitor[key] = self.monitor[key] + kwargs[key]
@@ -148,12 +160,15 @@ class VideoRecorderForScreen:
         self.video_frames = []
     
     def record(self):
+        self._recording = True
         self.start_frame = len(self.video_frames)
 
     def __stream(self):
-        while self._recording:
-            self.current_frame = np.array(self.sct.grab(self.monitor))[:, :, :3]
-            self.video_frames.append(self.current_frame)
+        while not self._terminate:
+            if self._recording:
+                self.current_frame = np.array(self.sct.grab(self.monitor), dtype=np.uint8)[:, :, :3]
+                self.current_frame = np.expand_dims(self.current_frame, 0)
+                self.video_frames = np.append(self.video_frames, self.current_frame, axis=0)
 
             # if self.current_frame != None:
             #     self.vid_recorder.write(self.current_frame)
@@ -162,19 +177,21 @@ class VideoRecorderForScreen:
             #     break
 
     def stream_video(self):
-        self._recording = True
         if self.start_time is None:
             self.start_time = time.time()
 
-        video_thread = threading.Thread(target=self.__stream)
-        video_thread.start()
+        self.video_thread = threading.Thread(target=self.__stream)
+        self.video_thread.start()
 
     def stop(self):
         if self._recording:
             self._recording = False
             self.end_time = time.time()
             self.end_frame = len(self.video_frames)
-            # self.vid_capture.release()
+
+    def terminate(self):
+        self._terminate = True
+        self.video_thread.join()
 
     def save(self, file_path):
         file_name = 'screen_video_temp'

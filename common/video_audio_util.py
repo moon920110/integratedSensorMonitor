@@ -17,7 +17,7 @@ class AudioRecorder:
         self.MIN = 200000  # sum of abs(MUTE) 211783
         self.MAX = 8000000  # 7889292
 
-        self._recording = True
+        self._recording = False
         self._mute = False
         self.current_frame = None
         self.device_name = device_name
@@ -28,11 +28,13 @@ class AudioRecorder:
         self.format = pyaudio.paInt16
         
         self.audio = pyaudio.PyAudio()
+        self.audio_thread = None
 
         self.stream = None
         self.audio_frames = []
         self.start_frame = None
         self.end_frame = None
+        self._terminate = False
 
     def connect(self):
         dev_index = self.find_device_index(self.device_name)
@@ -40,8 +42,8 @@ class AudioRecorder:
                                       channels=self.channels,
                                       rate=self.rate,
                                       input=True,
-                                      input_device_index = dev_index,
-                                      frames_per_buffer = self.frames_per_buffer)
+                                      input_device_index=dev_index,
+                                      frames_per_buffer=self.frames_per_buffer)
 
     def find_device_index(self, device_name):
         dev_index = 0
@@ -56,6 +58,7 @@ class AudioRecorder:
         return dev_index
     
     def record(self):
+        self._recording = True
         self.start_frame = len(self.audio_frames)
 
     def is_it_mic_or_stero_mix(self, device_name, dev):
@@ -88,25 +91,29 @@ class AudioRecorder:
     def stop(self):
         if self._recording:
             self._recording = False
-            self.stream.stop_stream()
             self.end_frame = len(self.audio_frames)
-            # self.stream.close()
-            # self.audio.terminate()
 
     # Launches the audio recording function using a thread
     def stream_audio(self):
-        self._recording = True
-        audio_thread = threading.Thread(target=self.__stream)
-        audio_thread.start()
+        self.audio_thread = threading.Thread(target=self.__stream)
+        self.audio_thread.start()
     
     def __stream(self):
         self.stream.start_stream()
-        while self._recording:
+        while not self._terminate:
             data = self.stream.read(self.frames_per_buffer)
-            if not self._mute:
-                self.audio_frames.append(data)
-            else:
-                self.audio_frames.append(bytes(MUTE))
+            if self._recording:
+                if not self._mute:
+                    self.audio_frames.append(data)
+                else:
+                    self.audio_frames.append(bytes(MUTE))
+
+    def terminate(self):
+        self._terminate = True
+        self.stream.stop_stream()
+        self.stream.close()
+        self.audio.terminate()
+        self.audio_thread.join()
 
     def save(self, file_path='./'):
         file_name = self.device_name[0] + '_audio_temp'
