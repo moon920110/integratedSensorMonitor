@@ -97,7 +97,7 @@ class AudioRecorder:
     def stream_audio(self):
         self.audio_thread = threading.Thread(target=self.__stream)
         self.audio_thread.start()
-    
+
     def __stream(self):
         self.stream.start_stream()
         while not self._terminate:
@@ -113,7 +113,6 @@ class AudioRecorder:
         self.stream.stop_stream()
         self.stream.close()
         self.audio.terminate()
-        self.audio_thread.join()
 
     def save(self, file_path='./'):
         file_name = self.device_name[0] + '_audio_temp'

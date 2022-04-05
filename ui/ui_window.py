@@ -1,8 +1,9 @@
 import sys
-from PyQt5.QtWidgets import QDesktopWidget, QMainWindow, QApplication, QStackedWidget
+from PyQt5.QtWidgets import QWidget, QDesktopWidget, QMainWindow, QApplication, QStackedWidget, QVBoxLayout
 
 from ui.first_page import FirstPageWidget
 from ui.recording_page import RecordingPageWidget
+from ui.connection_status_widget import ConnectionStatusWidget
 from ui.custom_signals import GoToRecordingPage, BackToFirstPage, ChangeStatus
 from core.monitor import Monitor
 
@@ -19,13 +20,19 @@ class UIWindow(QMainWindow):
         self.cs = ChangeStatus()
         self.cs.change_status.connect(self.change_status)
 
+        _widget = QWidget()
+        vbox = QVBoxLayout(_widget)
+        self.connection_widget = ConnectionStatusWidget(monitor)
         self.widgets = QStackedWidget()
         self.first_page = FirstPageWidget(self.gtr, self.cs, monitor)
         self.recording_page = RecordingPageWidget(self.btf, self.cs, monitor)
         self.widgets.addWidget(self.first_page)
         self.widgets.addWidget(self.recording_page)
+        vbox.addWidget(self.connection_widget)
+        vbox.addWidget(self.widgets)
 
-        self.setCentralWidget(self.widgets)
+        self.setLayout(vbox)
+        self.setCentralWidget(_widget)
         self.change_status('Set experiment information')
 
         self.setWindowTitle("sensor signal collector")

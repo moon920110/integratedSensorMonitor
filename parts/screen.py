@@ -34,6 +34,8 @@ class ScreenRecorder:
     def stream(self):
         self._audio_recorder.stream_audio()
         self._video_recorder.stream_video()
+        self._audio_recorder.audio_thread.join()
+        self._video_recorder.video_thread.join()
     
     def record(self):
         self.recording = True
@@ -191,7 +193,6 @@ class VideoRecorderForScreen:
 
     def terminate(self):
         self._terminate = True
-        self.video_thread.join()
 
     def save(self, file_path):
         file_name = 'screen_video_temp'

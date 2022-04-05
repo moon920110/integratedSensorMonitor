@@ -10,7 +10,6 @@ from PyQt5.QtWidgets import QApplication
 from ui.ui_window import UIWindow
 
 
-# TODO: 각 센서 활성 상태 표시 & camera 저장 시 빨리감기로 저장됨kkj
 def main():
     monitor = Monitor()
     gsr = GSR('CD36CD')
@@ -20,13 +19,13 @@ def main():
 
     print('Instances are generated')
 
-    monitor.add_part(eeg)
+    monitor.add_part(eeg, 'eeg')
     print('eeg is added')
-    monitor.add_part(gsr)
+    monitor.add_part(gsr, 'gsr')
     print('gsr is added')
-    monitor.add_part(webcam)
+    monitor.add_part(webcam, 'webcam')
     print('webcam is added')
-    monitor.add_part(screen)
+    monitor.add_part(screen, 'screen')
     print('screen is added')
 
     monitor.ready_parts()

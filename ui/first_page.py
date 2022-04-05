@@ -37,6 +37,7 @@ class FirstPageWidget(QWidget):
         game_label.setAlignment(Qt.AlignVCenter)
 
         self.game_cb = QComboBox(self)
+        self.game_cb.addItem('Baseline')
         self.game_cb.addItem('Exited')
         self.game_cb.addItem('Horror')
         self.game_cb.addItem('Bored')

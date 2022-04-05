@@ -27,6 +27,8 @@ class WebcamRecorder:
     def stream(self):
         self._audio_recorder.stream_audio()
         self._video_recorder.stream_video()
+        self._audio_recorder.audio_thread.join()
+        self._video_recorder.video_thread.join()
     
     def record(self):
         self.recording = True
@@ -169,7 +171,6 @@ class VideoRecorderForCamera:
 
     def terminate(self):
         self._terminate = True
-        self.video_thread.join()
         self.vid_capture.release()
 
     def record(self):
