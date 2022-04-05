@@ -133,4 +133,5 @@ class AudioRecorder:
         wave_file.writeframes(b''.join(self.audio_frames[audio_offset:self.end_frame]))
         wave_file.close()
 
+        self.clear()
         return os.path.join(file_path, file_name)
