@@ -144,8 +144,9 @@ class VideoRecorderForCamera:
         return self.end_time - self.start_time
     
     def clear(self):
-        self.video_frames = []
-    
+        self.video_frames = np.empty((1, self.vid_attribute['height'], self.vid_attribute['width'], 3),
+                                     dtype=np.uint8)
+
     def __stream(self):
         while not self._terminate:
             if self._recording:
@@ -198,4 +199,5 @@ class VideoRecorderForCamera:
             vid_recorder.write(frame)
         
         vid_recorder.release()
+        self.clear()
         return os.path.join(file_path, file_name)

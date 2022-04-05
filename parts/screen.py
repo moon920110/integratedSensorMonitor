@@ -126,6 +126,7 @@ class VideoRecorderForScreen:
 
         self.video_thread = None
         self.video_frames = []
+        self.init_video_frames = None
 
     def connect(self,monitor_number=0, **kwargs):
         self.check_detected_monitors()
@@ -143,8 +144,10 @@ class VideoRecorderForScreen:
         if monitor_number == 0:
             self.monitor = self.monitors[monitor_number]
             self.video_frames = np.empty((1, self.monitor['height'], self.monitor['width'], 3), dtype=np.uint8)
+            self.init_video_frames = self.video_frames
         else:
             self.video_frames = np.empty((1, kwargs['height'], kwargs['width'], 3), dtype=np.uint8)
+            self.init_video_frames = self.video_frames
             self.monitor = self.monitors[monitor_number]
             for key in ['left', 'top']:
                 self.monitor[key] = self.monitor[key] + kwargs[key]
@@ -159,7 +162,7 @@ class VideoRecorderForScreen:
         return self.end_time - self.start_time
 
     def clear(self):
-        self.video_frames = []
+        self.video_frames = self.init_video_frames
     
     def record(self):
         self._recording = True
@@ -222,4 +225,5 @@ class VideoRecorderForScreen:
             vid_recorder.write(frame)
 
         vid_recorder.release()
+        self.clear()
         return os.path.join(file_path, file_name)
