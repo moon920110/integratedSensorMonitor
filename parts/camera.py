@@ -55,8 +55,8 @@ class WebcamRecorder:
         if self.recording:
             self.stop_record()
         file_name = 'camera'
-        vid_file = self._video_recorder.save(file_path)
-        aud_file = self._audio_recorder.save(file_path)
+        vid_file, fps = self._video_recorder.save(file_path)
+        aud_file = self._audio_recorder.save(file_path, fps)
 
         current_time = datetime.now().strftime("%Y/%m/%d, %H:%M:%S")\
             .replace('/', '').replace(',', '_').replace(' ', '').replace(':', '')
@@ -189,15 +189,25 @@ class VideoRecorderForCamera:
         if not('.mp4' in file_name):
             file_name = file_name+'.mp4'
         
+        frame_counts = len(self.video_frames)
+        elapsed_time = self.get_record_time()
+        recorded_fps = frame_counts / elapsed_time
+        print('elapsed_time', elapsed_time)
+        print('recorded_fps', recorded_fps)
+        if ((self.vid_attribute['fps'] * 2 ) + 5) > recorded_fps:
+            print('webcam recorded fps is', recorded_fps)
+            recorded_fps = recorded_fps * 2
+
         vid_cod = cv2.VideoWriter_fourcc(*'MPEG')
         vid_recorder = cv2.VideoWriter(os.path.join(file_path, file_name),
                                        vid_cod,
-                                       self.vid_attribute['fps'],
+                                       recorded_fps,
                                        (self.vid_attribute['width'], self.vid_attribute['height']))
         
         for frame in self.video_frames[self.start_frame:self.end_frame]:
             vid_recorder.write(frame)
         
         vid_recorder.release()
+
         self.clear()
-        return os.path.join(file_path, file_name)
+        return os.path.join(file_path, file_name), recorded_fps

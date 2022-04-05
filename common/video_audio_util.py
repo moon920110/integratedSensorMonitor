@@ -114,7 +114,7 @@ class AudioRecorder:
         self.stream.close()
         self.audio.terminate()
 
-    def save(self, file_path='./'):
+    def save(self, file_path='./',audio_offset=0):
         file_name = self.device_name[0] + '_audio_temp'
         current_time = datetime.now().strftime("%Y/%m/%d, %H:%M:%S")\
             .replace('/', '')\
@@ -125,11 +125,12 @@ class AudioRecorder:
         if not('.wav' in file_name):
             file_name = file_name+'.wav'
         
+        audio_offset = int(self.start_frame+audio_offset)
         wave_file = wave.open(os.path.join(file_path, file_name), 'wb')
         wave_file.setnchannels(self.channels)
         wave_file.setsampwidth(self.audio.get_sample_size(self.format))
         wave_file.setframerate(self.rate)
-        wave_file.writeframes(b''.join(self.audio_frames[self.start_frame:self.end_frame]))
+        wave_file.writeframes(b''.join(self.audio_frames[audio_offset:self.end_frame]))
         wave_file.close()
 
         self.clear()
