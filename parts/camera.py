@@ -159,8 +159,6 @@ class VideoRecorderForCamera:
                     break
 
     def stream_video(self):
-        if self.start_time is None:
-            self.start_time = time.time()
         self.video_thread = threading.Thread(target=self.__stream)
         self.video_thread.start()
 
@@ -175,6 +173,8 @@ class VideoRecorderForCamera:
         self.vid_capture.release()
 
     def record(self):
+        if self.start_time is None:
+            self.start_time = time.time()
         self._recording = True
         self.start_frame = len(self.video_frames)
 
@@ -192,11 +192,11 @@ class VideoRecorderForCamera:
         frame_counts = len(self.video_frames)
         elapsed_time = self.get_record_time()
         recorded_fps = frame_counts / elapsed_time
-        print('elapsed_time', elapsed_time)
-        print('recorded_fps', recorded_fps)
+        print("total frames " + str(frame_counts))
+        print("elapsed time " + str(elapsed_time))
+        print("recorded fps " + str(recorded_fps))
         if ((self.vid_attribute['fps'] * 2 ) + 5) > recorded_fps:
             print('webcam recorded fps is', recorded_fps)
-            recorded_fps = recorded_fps * 2
 
         vid_cod = cv2.VideoWriter_fourcc(*'MPEG')
         vid_recorder = cv2.VideoWriter(os.path.join(file_path, file_name),
