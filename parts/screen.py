@@ -165,6 +165,8 @@ class VideoRecorderForScreen:
         self.video_frames = self.init_video_frames
     
     def record(self):
+        if self.start_time is None:
+            self.start_time = time.time()
         self._recording = True
         self.start_frame = len(self.video_frames)
 
@@ -182,9 +184,6 @@ class VideoRecorderForScreen:
             #     break
 
     def stream_video(self):
-        if self.start_time is None:
-            self.start_time = time.time()
-
         self.video_thread = threading.Thread(target=self.__stream)
         self.video_thread.start()
 
