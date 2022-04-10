@@ -1,4 +1,7 @@
+from base64 import encode
 import os
+import shutil
+
 import cv2
 import numpy as np
 import time
@@ -75,6 +78,7 @@ class WebcamRecorder:
 
                 if os.path.exists(vid_file):
                     os.remove(vid_file)
+                    os.remove('./data/tmp_web.mp4')
             except:
                 print('Fail to delete temp files')
         except:
@@ -104,12 +108,11 @@ class VideoRecorderForCamera:
         
         self.start_time = None
         self.end_time = None
-        self.start_frame = None
-        self.end_frame = None
+
+        self.tmp_path = './data/tmp_web.mp4'
+        self.vid_recorder = None
 
         self.camera_index = camera_index
-
-        self.video_frames = []
 
     def connect(self):
         self.vid_capture = self.__open_camera(self.camera_index)
@@ -121,8 +124,10 @@ class VideoRecorderForCamera:
                 'height': int(self.vid_capture.get(4)),
                 'fps': self.vid_capture.get(5)
             }
-            self.video_frames = np.empty((1, self.vid_attribute['height'], self.vid_attribute['width'], 3),
-                                         dtype= np.uint8)
+            self.vid_recorder = cv2.VideoWriter(self.tmp_path,
+                                       cv2.VideoWriter_fourcc(*'mp4v'),
+                                       self.vid_attribute['fps'],
+                                       (self.vid_attribute['width'], self.vid_attribute['height']))
     
     def __open_camera(self,camera_index,waiting=5):
         vid_capture = cv2.VideoCapture(camera_index)
@@ -144,16 +149,18 @@ class VideoRecorderForCamera:
         return self.end_time - self.start_time
     
     def clear(self):
-        self.video_frames = np.empty((1, self.vid_attribute['height'], self.vid_attribute['width'], 3),
-                                     dtype=np.uint8)
+        self.vid_recorder = cv2.VideoWriter(self.tmp_path,
+                                       cv2.VideoWriter_fourcc(*'mp4v'),
+                                       self.vid_attribute['fps'],
+                                       (self.vid_attribute['width'], self.vid_attribute['height']))
+        
 
     def __stream(self):
         while not self._terminate:
             if self._recording:
                 ret, self.current_frame = self.vid_capture.read()
                 if ret:
-                    self.current_frame = np.expand_dims(self.current_frame, 0).astype(np.uint8)
-                    self.video_frames = np.append(self.video_frames, self.current_frame, axis=0)
+                    self.vid_recorder.write(self.current_frame)
                 else:
                     print('read done')
                     break
@@ -166,17 +173,14 @@ class VideoRecorderForCamera:
         if self._recording:
             self._recording = False
             self.end_time = time.time()
-            self.end_frame = len(self.video_frames)
 
     def terminate(self):
         self._terminate = True
         self.vid_capture.release()
 
     def record(self):
-        if self.start_time is None:
-            self.start_time = time.time()
+        self.start_time = time.time()
         self._recording = True
-        self.start_frame = len(self.video_frames)
 
     def save(self, file_path='./'):
         file_name = 'camera_video_temp'
@@ -188,26 +192,14 @@ class VideoRecorderForCamera:
         file_name = current_time + file_name
         if not('.mp4' in file_name):
             file_name = file_name+'.mp4'
-        
-        frame_counts = len(self.video_frames)
-        elapsed_time = self.get_record_time()
-        recorded_fps = frame_counts / elapsed_time
-        print("total frames " + str(frame_counts))
-        print("elapsed time " + str(elapsed_time))
-        print("recorded fps " + str(recorded_fps))
-        if ((self.vid_attribute['fps'] * 2 ) + 5) > recorded_fps:
-            print('webcam recorded fps is', recorded_fps)
 
-        vid_cod = cv2.VideoWriter_fourcc(*'MPEG')
-        vid_recorder = cv2.VideoWriter(os.path.join(file_path, file_name),
-                                       vid_cod,
-                                       recorded_fps,
-                                       (self.vid_attribute['width'], self.vid_attribute['height']))
+        self.vid_recorder.release()
+        shutil.move(self.tmp_path, os.path.join(file_path, file_name))
+        recorded_fps = self.vid_attribute['fps']
         
-        for frame in self.video_frames[self.start_frame:self.end_frame]:
-            vid_recorder.write(frame)
-        
-        vid_recorder.release()
+        # see https://stackoverflow.com/questions/17091975/opencv-videowriter-framerate-issue
 
         self.clear()
         return os.path.join(file_path, file_name), recorded_fps
+
+

@@ -1,7 +1,10 @@
 import os
+import shutil
+
 import cv2
 import numpy as np
 from mss import mss
+
 import time
 from datetime import datetime
 import threading
@@ -71,7 +74,7 @@ class ScreenRecorder:
         if self.recording:
             self.stop_record()
         file_name = 'screen'
-        vid_file = self._video_recorder.save(file_path)
+        vid_file, fps_ = self._video_recorder.save(file_path)
         aud_file = self._audio_recorder.save(file_path)
 
         current_time = datetime.now().strftime("%Y/%m/%d, %H:%M:%S")\
@@ -83,7 +86,7 @@ class ScreenRecorder:
         if not('.mp4' in file_name):
             file_name = file_name+'.mp4'
 
-        video_stream = ffmpeg.input(vid_file)
+        video_stream = ffmpeg.input(vid_file).filter('fps', fps=fps_, round='up')
         audio_stream = ffmpeg.input(aud_file)
         try:
             stream = ffmpeg.output(audio_stream, video_stream, os.path.join(file_path, file_name)).run()
@@ -93,6 +96,7 @@ class ScreenRecorder:
 
                 if os.path.exists(vid_file):
                     os.remove(vid_file)
+                    os.remove('./data/tmp_src.mp4')
             except:
                 print('Fail to delete temp files')
         except:
@@ -118,15 +122,17 @@ class VideoRecorderForScreen:
 
         self.start_time = None
         self.end_time = None
-        self.start_frame = None
-        self.end_frame = None
+        self.end_frame = 0
         
         self.sct = mss()
         self.monitors = self.sct.monitors
 
         self.video_thread = None
-        self.video_frames = []
         self.init_video_frames = None
+
+        self.tmp_path = './data/tmp_src.mp4'
+        self.fps = 16
+        self.vid_recorder = None
 
     def connect(self,monitor_number=0, **kwargs):
         self.check_detected_monitors()
@@ -155,6 +161,11 @@ class VideoRecorderForScreen:
             for key in ['width', 'height']:
                 self.monitor[key] = kwargs[key]
 
+        self.vid_recorder = cv2.VideoWriter(self.tmp_path,
+                                       cv2.VideoWriter_fourcc(*'mp4v'),
+                                       self.fps,
+                                       (self.monitor['width'], self.monitor['height']))
+
     def get_current_video_value(self):
         return self.current_frame, self.monitor
 
@@ -163,18 +174,22 @@ class VideoRecorderForScreen:
 
     def clear(self):
         self.video_frames = self.init_video_frames
+        self.end_frame = 0
+        self.vid_recorder = cv2.VideoWriter(self.tmp_path,
+                                       cv2.VideoWriter_fourcc(*'mp4v'),
+                                       self.fps,
+                                       (self.monitor['width'], self.monitor['height']))
     
     def record(self):
         self.start_time = time.time()
         self._recording = True
-        self.start_frame = len(self.video_frames)
 
     def __stream(self):
         while not self._terminate:
             if self._recording:
                 self.current_frame = np.array(self.sct.grab(self.monitor), dtype=np.uint8)[:, :, :3]
-                self.current_frame = np.expand_dims(self.current_frame, 0)
-                self.video_frames = np.append(self.video_frames, self.current_frame, axis=0)
+                self.vid_recorder.write(self.current_frame)
+                self.end_frame = self.end_frame + 1
 
             # if self.current_frame != None:
             #     self.vid_recorder.write(self.current_frame)
@@ -190,7 +205,6 @@ class VideoRecorderForScreen:
         if self._recording:
             self._recording = False
             self.end_time = time.time()
-            self.end_frame = len(self.video_frames)
 
     def terminate(self):
         self._terminate = True
@@ -206,22 +220,15 @@ class VideoRecorderForScreen:
         if not('.mp4' in file_name):
             file_name = file_name+'.mp4'
 
-        frame_counts = len(self.video_frames)
+        self.vid_recorder.release()
+        shutil.move(self.tmp_path, os.path.join(file_path, file_name))
+
+        frame_counts = self.end_frame
         elapsed_time = self.get_record_time()
         recorded_fps = frame_counts / elapsed_time
-        # print("total frames " + str(frame_counts))
-        # print("elapsed time " + str(elapsed_time))
-        # print("recorded fps " + str(recorded_fps))
+        print("total frames " + str(frame_counts))
+        print("elapsed time " + str(elapsed_time))
+        print("recorded fps " + str(recorded_fps))
 
-        vid_cod = cv2.VideoWriter_fourcc(*'mp4v')
-        vid_recorder = cv2.VideoWriter(os.path.join(file_path, file_name),
-                                       vid_cod,
-                                       recorded_fps,
-                                       (self.monitor['width'], self.monitor['height']))
-
-        for frame in self.video_frames[self.start_frame:self.end_frame]:
-            vid_recorder.write(frame)
-
-        vid_recorder.release()
         self.clear()
-        return os.path.join(file_path, file_name)
+        return os.path.join(file_path, file_name), recorded_fps
