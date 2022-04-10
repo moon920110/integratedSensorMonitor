@@ -165,8 +165,7 @@ class VideoRecorderForScreen:
         self.video_frames = self.init_video_frames
     
     def record(self):
-        if self.start_time is None:
-            self.start_time = time.time()
+        self.start_time = time.time()
         self._recording = True
         self.start_frame = len(self.video_frames)
 
@@ -214,7 +213,7 @@ class VideoRecorderForScreen:
         # print("elapsed time " + str(elapsed_time))
         # print("recorded fps " + str(recorded_fps))
 
-        vid_cod = cv2.VideoWriter_fourcc(*'MPEG')
+        vid_cod = cv2.VideoWriter_fourcc(*'mp4v')
         vid_recorder = cv2.VideoWriter(os.path.join(file_path, file_name),
                                        vid_cod,
                                        recorded_fps,
