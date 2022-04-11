@@ -46,65 +46,68 @@ class EEG:
         # stream() receives DSI-Streamer TCP/IP packets and updates the signal_log and time_log attributes
         # which capture EEG data and time data, respectively, from the last 100 EEG data packets (by default) into a numpy array.
         while not self._terminate:
-            data = self.sock.recv(921600)
-            self.data_log += data
-            if self.data_log.find(b'@ABCD', 0, len(
-                    self.data_log)) != -1:  # The script looks for the '@ABCD' header start sequence to find packets.
-                for index, packet in enumerate(self.data_log.split(b'@ABCD')[
-                                               1:]):  # The script then splits the inbound transmission by the header start sequence to collect the individual packets.
-                    self.latest_packets.append(b'@ABCD' + packet)
-                for packet in self.latest_packets:
-                    self.latest_packet_headers.append(struct.unpack('>BHI', packet[5:12]))
+            try:
+                self.latest_packets = []
+                self.latest_packet_headers = []
+                data = self.sock.recv(921600)
                 self.data_log = b''
+                self.data_log += data
+                if self.data_log.find(b'@ABCD', 0, len(
+                        self.data_log)) != -1:  # The script looks for the '@ABCD' header start sequence to find packets.
+                    for index, packet in enumerate(self.data_log.split(b'@ABCD')[
+                                                   1:]):  # The script then splits the inbound transmission by the header start sequence to collect the individual packets.
+                        self.latest_packets.append(b'@ABCD' + packet)
+                    for packet in self.latest_packets:
+                        self.latest_packet_headers.append(struct.unpack('>BHI', packet[5:12]))
 
-                for index, packet_header in enumerate(self.latest_packet_headers):
-                    # For each packet in the transmission, the script will append the signal data and timestamps to their respective logs.
-                    if packet_header[0] == 1:
-                        if np.shape(self.signal_log)[0] == 1:  # The signal_log must be initialized based on the headset and number of available channels.
-                            self.signal_log = np.zeros((int(len(self.latest_packets[index][23:]) / 4), 20))
-                            self.time_log = np.zeros((1, 20))
-                            self.latest_packet_data = np.zeros((int(len(self.latest_packets[index][23:]) / 4), 1))
+                    for index, packet_header in enumerate(self.latest_packet_headers):
+                        # For each packet in the transmission, the script will append the signal data and timestamps to their respective logs.
+                        if packet_header[0] == 1:
+                            if np.shape(self.signal_log)[0] == 1:  # The signal_log must be initialized based on the headset and number of available channels.
+                                self.signal_log = np.zeros((int(len(self.latest_packets[index][23:]) / 4), 20))
+                                self.time_log = np.zeros((1, 20))
+                                self.latest_packet_data = np.zeros((int(len(self.latest_packets[index][23:]) / 4), 1))
 
-                        self.latest_packet_data = np.reshape(
-                            struct.unpack('>%df' % (len(self.latest_packets[index][23:]) / 4),
-                                          self.latest_packets[index][23:]), (len(self.latest_packet_data), 1))
-                        self.latest_packet_data_timestamp = np.reshape(
-                            struct.unpack('>f', self.latest_packets[index][12:16]), (1, 1))
+                            self.latest_packet_data = np.reshape(
+                                struct.unpack('>%df' % (len(self.latest_packets[index][23:]) / 4),
+                                              self.latest_packets[index][23:]), (len(self.latest_packet_data), 1))
+                            self.latest_packet_data_timestamp = np.reshape(
+                                struct.unpack('>f', self.latest_packets[index][12:16]), (1, 1))
 
-                        # print("Timestamps: " + str(self.latest_packet_data_timestamp))
-                        # print("Signal Data: " + str(self.latest_packet_data))
-                        if self._recording:
-                            if self.start_checker == 0:
-                                self.standard_time = self.latest_packet_data_timestamp.squeeze()
-                                self.start_checker = 1
-                            record_time = self.latest_packet_data_timestamp.squeeze() - self.standard_time
-                            data_for_save = np.concatenate(([[time.time()]], [[record_time]], self.latest_packet_data), axis=0)
-                            self.stream_data = pd.concat([self.stream_data,
-                                      pd.DataFrame(data_for_save.reshape(1, -1), columns=self.columns)])
-                        self.signal_log = np.append(self.signal_log, self.latest_packet_data, 1)
-                        self.time_log = np.append(self.time_log, self.latest_packet_data_timestamp, 1)
-                        self.signal_log = self.signal_log[:, -100:]
-                        self.time_log = self.time_log[:, -100:]
+                            # print("Timestamps: " + str(self.latest_packet_data_timestamp))
+                            # print("Signal Data: " + str(self.latest_packet_data))
+                            if self._recording:
+                                if self.start_checker == 0:
+                                    self.standard_time = self.latest_packet_data_timestamp.squeeze()
+                                    self.start_checker = 1
+                                record_time = self.latest_packet_data_timestamp.squeeze() - self.standard_time
+                                data_for_save = np.concatenate(([[time.time()]], [[record_time]], self.latest_packet_data), axis=0)
+                                self.stream_data = pd.concat([self.stream_data,
+                                          pd.DataFrame(data_for_save.reshape(1, -1), columns=self.columns)])
+                            self.signal_log = np.append(self.signal_log, self.latest_packet_data, 1)
+                            self.time_log = np.append(self.time_log, self.latest_packet_data_timestamp, 1)
+                            self.signal_log = self.signal_log[:, -100:]
+                            self.time_log = self.time_log[:, -100:]
 
-                    ## Non-data packet handling
-                    if packet_header[0] == 5:
-                        (event_code, event_node) = struct.unpack('>II', self.latest_packets[index][12:20])
-                        if len(self.latest_packets[index]) > 24:
-                            message_length = struct.unpack('>I', self.latest_packets[index][20:24])[0]
-                        print("Event code = " + str(event_code) + "  Node = " + str(event_node))
-                        if event_code == 9:
-                            montage = self.latest_packets[index][24:24 + message_length].decode()
-                            montage = montage.strip()
-                            print("Montage = " + montage)
-                            self.montage = montage.split(',')
-                        if event_code == 10:
-                            frequencies = self.latest_packets[index][24:24 + message_length].decode()
-                            print("Mains,Sample = " + frequencies)
-                            mains, sample = frequencies.split(',')
-                            self.fsample = float(sample)
-                            self.fmains = float(mains)
-            self.latest_packets = []
-            self.latest_packet_headers = []
+                        ## Non-data packet handling
+                        if packet_header[0] == 5:
+                            (event_code, event_node) = struct.unpack('>II', self.latest_packets[index][12:20])
+                            if len(self.latest_packets[index]) > 24:
+                                message_length = struct.unpack('>I', self.latest_packets[index][20:24])[0]
+                            print("Event code = " + str(event_code) + "  Node = " + str(event_node))
+                            if event_code == 9:
+                                montage = self.latest_packets[index][24:24 + message_length].decode()
+                                montage = montage.strip()
+                                print("Montage = " + montage)
+                                self.montage = montage.split(',')
+                            if event_code == 10:
+                                frequencies = self.latest_packets[index][24:24 + message_length].decode()
+                                print("Mains,Sample = " + frequencies)
+                                mains, sample = frequencies.split(',')
+                                self.fsample = float(sample)
+                                self.fmains = float(mains)
+            except BaseException as e:
+                print(f'[EEG] {e}; restart EEG')
 
     def record(self):
         self.columns = ['time', 'timestamp'] + self.montage

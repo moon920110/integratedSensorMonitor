@@ -134,7 +134,7 @@ class VideoRecorderForScreen:
         self.fps = 16
         self.vid_recorder = None
 
-    def connect(self,monitor_number=0, **kwargs):
+    def connect(self, monitor_number=0, **kwargs):
         self.check_detected_monitors()
         self.select_screen_to_record(monitor_number=monitor_number, **kwargs)
 
