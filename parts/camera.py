@@ -129,7 +129,7 @@ class VideoRecorderForCamera:
                                        self.vid_attribute['fps'],
                                        (self.vid_attribute['width'], self.vid_attribute['height']))
     
-    def __open_camera(self,camera_index,waiting=5):
+    def __open_camera(self, camera_index, waiting=5):
         vid_capture = cv2.VideoCapture(camera_index)
         if vid_capture is None or not vid_capture.isOpened():
             print('Warning: unable to open video source: ', camera_index, " | waiting for", waiting, "second")
